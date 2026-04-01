@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Livio - Personal Life & Money Management System
 
 A production-ready SaaS dashboard for personal finance management, built with Next.js, Firebase Authentication, and Tailwind CSS.
@@ -211,3 +212,6 @@ For support and questions, please contact the development team.
 ---
 
 Built with ❤️ for better financial management
+=======
+# life-tracker-app
+>>>>>>> d97abce32411b72ab8300129d016a61249113eb4
