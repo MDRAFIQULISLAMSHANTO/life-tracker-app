@@ -1,9 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import Logo from '../common/Logo'
 
-const links = [
+const LINKS = [
   { href: '/features', label: 'Features' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/contact', label: 'Contact' },
@@ -12,22 +11,37 @@ const links = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-neutral-200 bg-white">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-8">
+    <footer
+      className="py-10 sm:py-12"
+      style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          {/* Logo + tagline */}
           <div>
-            <Logo variant="full" size="sm" />
-            <p className="mt-3 text-sm text-neutral-500 max-w-xs leading-relaxed">
-              Personal finance and productivity. Built to stay fast and easy on every device.
+            <div className="flex items-center gap-2 mb-2">
+              <div
+                className="w-7 h-7 rounded-xl flex items-center justify-center text-white font-black text-xs"
+                style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
+              >
+                L
+              </div>
+              <span className="font-extrabold text-sm tracking-tight" style={{ color: '#0f0f1a' }}>Livio</span>
+            </div>
+            <p className="text-xs max-w-xs leading-relaxed" style={{ color: '#94a3b8' }}>
+              Personal finance and productivity. Fast on every device.
             </p>
           </div>
-          <nav aria-label="Footer">
+
+          {/* Links */}
+          <nav>
             <ul className="flex flex-wrap gap-x-6 gap-y-2">
-              {links.map(({ href, label }) => (
+              {LINKS.map(({ href, label }) => (
                 <li key={href}>
                   <Link
                     href={href}
-                    className="text-sm font-medium text-neutral-600 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-md"
+                    className="text-sm font-semibold transition-opacity hover:opacity-70"
+                    style={{ color: '#64748b' }}
                   >
                     {label}
                   </Link>
@@ -36,15 +50,24 @@ export default function Footer() {
             </ul>
           </nav>
         </div>
-        <div className="mt-10 pt-8 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-sm text-neutral-500">
-          <p>© {new Date().getFullYear()} Livio</p>
-          <div className="flex gap-6">
-            <Link href="/contact" className="hover:text-neutral-800">
-              Support
-            </Link>
-            <Link href="/pricing" className="hover:text-neutral-800">
-              Plans
-            </Link>
+
+        <div
+          className="mt-8 pt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs"
+          style={{ borderTop: '1px solid rgba(0,0,0,0.06)', color: '#94a3b8' }}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+            <p>© {new Date().getFullYear()} Livio — All rights reserved</p>
+            <p>
+              Designed &amp; built by{' '}
+              <a href="https://rishanto.com" target="_blank" rel="noopener noreferrer"
+                className="font-bold transition-opacity hover:opacity-70" style={{ color: '#6366f1' }}>
+                Rishanto
+              </a>
+            </p>
+          </div>
+          <div className="flex gap-5">
+            <Link href="/contact" className="hover:opacity-70 transition-opacity">Support</Link>
+            <Link href="/pricing" className="hover:opacity-70 transition-opacity">Plans</Link>
           </div>
         </div>
       </div>

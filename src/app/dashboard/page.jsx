@@ -1,49 +1,41 @@
 'use client'
 
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { Wallet, TrendingUp, TrendingDown, Target } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, Percent, ArrowUpRight, ArrowDownRight, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import SummaryCard from '../../components/dashboard/SummaryCard'
-
-const ExpenseDonutChart = dynamic(() => import('../../components/charts/ExpenseDonutChart'), {
-  loading: () => (
-    <div
-      className="h-[280px] animate-pulse rounded-[1.25rem] border border-white/55 bg-white/42 shadow-glass backdrop-blur-xl lg:h-[300px] lg:rounded-xl lg:bg-white/48"
-      aria-hidden
-    />
-  ),
-  ssr: false,
-})
-const DailyTrendChart = dynamic(() => import('../../components/charts/DailyTrendChart'), {
-  loading: () => (
-    <div
-      className="h-[280px] animate-pulse rounded-[1.25rem] border border-white/55 bg-white/42 shadow-glass backdrop-blur-xl lg:h-[300px] lg:rounded-xl lg:bg-white/48"
-      aria-hidden
-    />
-  ),
-  ssr: false,
-})
-import BudgetStatus from '../../components/dashboard/BudgetStatus'
 import TodayEvents from '../../components/dashboard/TodayEvents'
 import TodayReminders from '../../components/dashboard/TodayReminders'
 import QuickNotes from '../../components/dashboard/QuickNotes'
 import RecentActivity from '../../components/dashboard/RecentActivity'
 import { formatCurrency } from '../../utils/formatters'
 import { useFinance } from '../../context/FinanceContext'
+import { useQuickAdd } from '../../context/QuickAddContext'
+import { useDashboardToday } from '../../context/DashboardTodayContext'
+import { useReminderNotifications } from '../../hooks/useReminderNotifications'
+
+const ExpenseDonutChart = dynamic(() => import('../../components/charts/ExpenseDonutChart'), {
+  loading: () => <div className="glass-card animate-pulse" style={{ height: 300 }} />,
+  ssr: false,
+})
+const DailyTrendChart = dynamic(() => import('../../components/charts/DailyTrendChart'), {
+  loading: () => <div className="glass-card animate-pulse" style={{ height: 300 }} />,
+  ssr: false,
+})
+const BudgetBarChart = dynamic(() => import('../../components/charts/BudgetBarChart'), {
+  loading: () => <div className="glass-card animate-pulse" style={{ height: 260 }} />,
+  ssr: false,
+})
 
 function buildDailyTrend(ledgerMonthKey, transactions) {
   if (!ledgerMonthKey) return []
   const [y, m] = ledgerMonthKey.split('-').map(Number)
   if (!Number.isFinite(y) || !Number.isFinite(m)) return []
   const daysInMonth = new Date(y, m, 0).getDate()
-  const rows = Array.from({ length: daysInMonth }, (_, i) => ({
-    date: String(i + 1),
-    income: 0,
-    expense: 0,
-  }))
+  const rows = Array.from({ length: daysInMonth }, (_, i) => ({ date: String(i + 1), income: 0, expense: 0 }))
   transactions
     .filter((t) => t.date && String(t.date).slice(0, 7) === ledgerMonthKey)
     .forEach((t) => {
@@ -59,198 +51,173 @@ function buildDailyTrend(ledgerMonthKey, transactions) {
 export default function DashboardPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const { openQuickAdd } = useQuickAdd()
   const {
-    currency,
-    ledgerMonthKey,
-    transactionsInLedgerMonth,
-    monthIncome,
-    monthExpense,
-    monthNet,
-    lifetimeNet,
-    expenseByCategory,
-    budgetRows,
-    transactions,
+    currency, ledgerMonthKey, transactionsInLedgerMonth,
+    monthIncome, monthExpense, monthNet, lifetimeNet,
+    expenseByCategory, budgetRowsFull, transactions,
   } = useFinance()
+  const { reminders } = useDashboardToday()
+  useReminderNotifications(reminders)
 
-  const expenseData = useMemo(() => {
-    return Object.entries(expenseByCategory)
-      .filter(([, v]) => v > 0)
-      .map(([name, value]) => ({ name, value }))
-  }, [expenseByCategory])
+  const [balanceVisible, setBalanceVisible] = useState(false)
 
-  const dailyTrendData = useMemo(
-    () => buildDailyTrend(ledgerMonthKey, transactions),
-    [ledgerMonthKey, transactions]
+  const heroRef = useRef(null)
+  const statsRef = useRef(null)
+  const chartsRef = useRef(null)
+
+  useEffect(() => {
+    if (!user || loading) return
+    import('gsap').then(({ gsap: g }) => {
+      const tl = g.timeline({ defaults: { ease: 'power3.out' } })
+      if (heroRef.current) tl.fromTo(heroRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6 })
+      if (statsRef.current?.children) {
+        tl.fromTo(Array.from(statsRef.current.children), { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.08 }, '-=0.3')
+      }
+      if (chartsRef.current?.children) {
+        tl.fromTo(Array.from(chartsRef.current.children), { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.1 }, '-=0.2')
+      }
+    }).catch(() => {})
+  }, [user, loading])
+
+  const expenseData = useMemo(() =>
+    Object.entries(expenseByCategory).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value })),
+    [expenseByCategory]
   )
-
-  const recentActivities = useMemo(() => {
-    return transactionsInLedgerMonth
+  const dailyTrendData = useMemo(() => buildDailyTrend(ledgerMonthKey, transactions), [ledgerMonthKey, transactions])
+  const recentActivities = useMemo(() =>
+    transactionsInLedgerMonth
       .filter((t) => t.type === 'income' || t.type === 'expense')
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 15)
       .map((t) => ({
-        id: t.id,
-        type: t.type,
+        id: t.id, type: t.type,
         title: t.description || t.category || 'Transaction',
         amount: t.type === 'income' ? Number(t.amount || 0) : -Number(t.amount || 0),
-        category: t.category,
-        time: t.date,
-      }))
-  }, [transactionsInLedgerMonth])
-
-  const summaryData = useMemo(
-    () => ({
-      balance: {
-        value: formatCurrency(lifetimeNet, currency),
-        change: 'All time',
-        changeType: 'neutral',
-      },
-      income: {
-        value: formatCurrency(monthIncome, currency),
-        change: 'This month',
-        changeType: 'neutral',
-      },
-      expense: {
-        value: formatCurrency(monthExpense, currency),
-        change: 'This month',
-        changeType: 'neutral',
-      },
-      savings: {
-        value: formatCurrency(monthNet, currency),
-        change: 'This month',
-        changeType: 'neutral',
-      },
-    }),
-    [currency, lifetimeNet, monthIncome, monthExpense, monthNet]
+        category: t.category, time: t.date,
+      })),
+    [transactionsInLedgerMonth]
   )
 
+  const savingsRate = monthIncome > 0 ? Math.round((monthNet / monthIncome) * 100) : 0
+
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login')
-    }
+    if (!loading && !user) router.replace('/login')
   }, [user, loading, router])
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-text-secondary">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 rounded-2xl animate-pulse" style={{ background: 'var(--accent)' }} />
+          <p className="text-sm font-medium" style={{ color: 'var(--text-2)' }}>Loading…</p>
+        </div>
       </div>
     )
   }
+  if (!user) return null
 
-  if (!user) {
-    return null
-  }
+  const budgetChartRows = budgetRowsFull.filter((r) => r.budget > 0 || r.spent > 0)
 
   return (
-    <div className="max-sm:space-y-4 space-y-5 sm:space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-        <p className="text-xs leading-relaxed text-neutral-600 sm:text-sm sm:text-text-secondary">
-          <span className="sm:hidden">
-            <span className="font-semibold text-neutral-900">{ledgerMonthKey}</span>
-            <span> · month follows the header</span>
-          </span>
-          <span className="hidden sm:inline">
-            Ledger month <span className="font-semibold text-text-primary">{ledgerMonthKey}</span> — totals and charts
-            follow the month selector in the header.
-          </span>
-        </p>
-        <Link
-          href="/dashboard/budget"
-          className="inline-flex min-h-[40px] w-fit items-center rounded-full border border-white/50 bg-white/35 px-3.5 py-2 text-xs font-semibold text-primary shadow-sm backdrop-blur-md active:scale-[0.98] sm:min-h-0 sm:border-transparent sm:bg-transparent sm:px-0 sm:py-0 sm:text-sm sm:font-medium sm:shadow-none sm:backdrop-blur-none sm:hover:underline"
-        >
-          Set budgets
-        </Link>
-      </div>
+    <div className="space-y-5 sm:space-y-6">
 
-      <section
-        className="sm:hidden rounded-[1.75rem] border border-white/55 bg-white/45 p-5 shadow-glass backdrop-blur-2xl"
-        aria-label="Balance overview"
-      >
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Total balance</p>
-        <p className="mt-1 text-3xl font-semibold tracking-tight text-neutral-900 tabular-nums">
-          {formatCurrency(lifetimeNet, currency)}
-        </p>
-        <p className="mt-2 text-xs text-neutral-600">
-          This month ·{' '}
-          <span className="font-semibold tabular-nums text-neutral-800">{formatCurrency(monthNet, currency)}</span>
-        </p>
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          <Link
-            href="/dashboard/income"
-            className="rounded-2xl border border-white/55 bg-white/35 py-3 text-center text-sm font-semibold text-neutral-800 shadow-sm backdrop-blur-md active:scale-[0.98]"
+      {/* Row 1 — Hero + Stats */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+
+        {/* Hero Balance Card */}
+        <div ref={heroRef} className="lg:col-span-1">
+          <div
+            className="hero-card relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000 45%))',
+              borderRadius: '1.5rem',
+              padding: '1.5rem',
+              minHeight: 200,
+            }}
           >
-            Income
-          </Link>
-          <Link
-            href="/dashboard/expenses"
-            className="rounded-2xl border border-white/55 bg-white/35 py-3 text-center text-sm font-semibold text-neutral-800 shadow-sm backdrop-blur-md active:scale-[0.98]"
-          >
-            Expense
-          </Link>
-        </div>
-      </section>
+            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-20" style={{ background: 'rgba(255,255,255,0.3)' }} />
+            <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-10" style={{ background: 'rgba(255,255,255,0.3)' }} />
 
-      <div
-        role="region"
-        aria-label="Summary statistics"
-        className="flex max-sm:-mx-3 max-sm:snap-x max-sm:snap-mandatory max-sm:gap-3 max-sm:overflow-x-auto max-sm:px-3 max-sm:pb-1 max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:h-0 max-sm:[&::-webkit-scrollbar]:w-0 max-sm:touch-pan-x sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:touch-auto lg:grid-cols-4"
-      >
-        <div className="max-sm:w-[min(78vw,17.5rem)] max-sm:max-w-[280px] max-sm:shrink-0 max-sm:snap-start sm:w-auto sm:max-w-none">
-          <SummaryCard
-            title="Net (all time)"
-            value={summaryData.balance.value}
-            change={summaryData.balance.change}
-            changeType={summaryData.balance.changeType}
-            icon={Wallet}
-            iconColor="primary"
-          />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-bold uppercase tracking-widest text-white/70">Total Balance</p>
+                <button
+                  type="button"
+                  onClick={() => setBalanceVisible((v) => !v)}
+                  className="flex items-center justify-center w-7 h-7 rounded-lg transition-opacity hover:opacity-70 active:scale-95"
+                  style={{ background: 'rgba(255,255,255,0.15)' }}
+                  aria-label={balanceVisible ? 'Hide balance' : 'Show balance'}
+                >
+                  {balanceVisible
+                    ? <EyeOff className="w-3.5 h-3.5 text-white/80" />
+                    : <Eye className="w-3.5 h-3.5 text-white/80" />
+                  }
+                </button>
+              </div>
+
+              {balanceVisible ? (
+                <p className="text-3xl sm:text-4xl font-extrabold text-white tabular-nums tracking-tight mb-1">
+                  {formatCurrency(lifetimeNet, currency)}
+                </p>
+              ) : (
+                <p className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-1 select-none">
+                  ••••••
+                </p>
+              )}
+              <p className="text-xs text-white/60 mb-6">{ledgerMonthKey} · tap eye to reveal</p>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Link href="/dashboard/income"
+                  className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all active:scale-95"
+                  style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(10px)' }}>
+                  <ArrowDownRight className="w-4 h-4" /> Income
+                </Link>
+                <Link href="/dashboard/expenses"
+                  className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all active:scale-95"
+                  style={{ background: 'rgba(0,0,0,0.25)' }}>
+                  <ArrowUpRight className="w-4 h-4" /> Expense
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="max-sm:w-[min(78vw,17.5rem)] max-sm:max-w-[280px] max-sm:shrink-0 max-sm:snap-start sm:w-auto sm:max-w-none">
-          <SummaryCard
-            title="Income"
-            value={summaryData.income.value}
-            change={summaryData.income.change}
-            changeType={summaryData.income.changeType}
-            icon={TrendingUp}
-            iconColor="success"
-          />
-        </div>
-        <div className="max-sm:w-[min(78vw,17.5rem)] max-sm:max-w-[280px] max-sm:shrink-0 max-sm:snap-start sm:w-auto sm:max-w-none">
-          <SummaryCard
-            title="Expenses"
-            value={summaryData.expense.value}
-            change={summaryData.expense.change}
-            changeType={summaryData.expense.changeType}
-            icon={TrendingDown}
-            iconColor="danger"
-          />
-        </div>
-        <div className="max-sm:w-[min(78vw,17.5rem)] max-sm:max-w-[280px] max-sm:shrink-0 max-sm:snap-start sm:w-auto sm:max-w-none">
-          <SummaryCard
-            title="Net (this month)"
-            value={summaryData.savings.value}
-            change={summaryData.savings.change}
-            changeType={summaryData.savings.changeType}
-            icon={Target}
-            iconColor="success"
-          />
+
+        {/* Stats Grid */}
+        <div ref={statsRef} className="lg:col-span-2 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 content-start">
+          <SummaryCard title="Monthly Income" value={formatCurrency(monthIncome, currency)}
+            change="This month" changeType="neutral" icon={TrendingUp} iconColor="success" />
+          <SummaryCard title="Monthly Expense" value={formatCurrency(monthExpense, currency)}
+            change="This month" changeType="neutral" icon={TrendingDown} iconColor="danger" />
+          <SummaryCard title="Monthly Net" value={formatCurrency(monthNet, currency)}
+            change={monthNet >= 0 ? 'Surplus' : 'Deficit'}
+            changeType={monthNet >= 0 ? 'positive' : 'negative'} icon={Wallet} iconColor="primary" />
+          <SummaryCard title="Savings Rate" value={`${Math.max(0, savingsRate)}%`}
+            change="of income"
+            changeType={savingsRate >= 20 ? 'positive' : savingsRate < 0 ? 'negative' : 'neutral'}
+            icon={Percent} iconColor={savingsRate >= 20 ? 'success' : 'warning'} />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
-        <ExpenseDonutChart data={expenseData} />
-        <DailyTrendChart data={dailyTrendData} />
-      </div>
-
-      <BudgetStatus budgets={budgetRows} currency={currency} />
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
+      {/* Row 2 — Reminders / Events / Notes */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
         <TodayEvents />
         <TodayReminders />
         <QuickNotes />
       </div>
 
+      {/* Row 3 — Charts */}
+      <div ref={chartsRef} className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+        <DailyTrendChart data={dailyTrendData} />
+        <ExpenseDonutChart data={expenseData} />
+      </div>
+
+      {/* Row 4 — Budget vs Actual (all categories) */}
+      {budgetChartRows.length > 0 && (
+        <BudgetBarChart rows={budgetChartRows} currency={currency} />
+      )}
+
+      {/* Row 5 — Recent Activity */}
       <RecentActivity activities={recentActivities} />
     </div>
   )

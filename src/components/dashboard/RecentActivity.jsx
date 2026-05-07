@@ -1,26 +1,29 @@
 'use client'
 
+import Link from 'next/link'
 import RecentActivityItem from './RecentActivityItem'
 
 function RecentActivity({ activities = [] }) {
-  // Sample data structure: array of activity objects
-
   return (
     <div className="dashboard-glass-card">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-text-primary">Recent Activity</h3>
-        <button className="text-sm text-primary font-medium hover:text-primary-600 transition-colors">
-          View All
-        </button>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-bold" style={{ color: 'var(--text-1)' }}>Recent Activity</h3>
+        <Link
+          href="/dashboard/expenses"
+          className="text-xs font-bold transition-opacity hover:opacity-70"
+          style={{ color: 'var(--accent)' }}
+        >
+          View all
+        </Link>
       </div>
       {activities.length > 0 ? (
-        <div className="max-h-96 overflow-y-auto scrollbar-hide">
-          {activities.map((activity) => (
-            <RecentActivityItem key={activity.id || `${activity.title}-${activity.time}`} activity={activity} />
+        <div className="scroll-touch max-h-96 overflow-y-auto -mx-1 px-1">
+          {activities.map((a) => (
+            <RecentActivityItem key={a.id || `${a.title}-${a.time}`} activity={a} />
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-12 text-text-secondary">
+        <div className="flex flex-col items-center justify-center py-10" style={{ color: 'var(--text-3)' }}>
           <p className="text-sm">No recent activity</p>
         </div>
       )}
@@ -29,5 +32,3 @@ function RecentActivity({ activities = [] }) {
 }
 
 export default RecentActivity
-
-

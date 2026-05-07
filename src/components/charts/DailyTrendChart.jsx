@@ -1,6 +1,6 @@
 'use client'
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area, AreaChart } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { formatCurrency } from '../../utils/formatters'
 import { useFinance } from '../../context/FinanceContext'
 
@@ -8,27 +8,18 @@ function DailyTrendChart({ data = [] }) {
   const { currency } = useFinance()
   const code = String(currency || 'USD').toUpperCase()
 
-  // Sample data structure: [{ date: '01', income: 1200, expense: 800 }]
-  
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
-          <p className="font-semibold text-text-primary mb-3">Day {label}</p>
-          <div className="space-y-2">
-            {payload.map((entry, index) => (
-              <div key={index} className="flex items-center justify-between gap-4">
-                <div className="flex items-center space-x-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: entry.color }}
-                  />
-                  <span className="text-sm text-text-secondary">{entry.name}</span>
-                </div>
-                <span className="text-sm font-bold text-text-primary">{formatCurrency(entry.value, currency)}</span>
-              </div>
-            ))}
-          </div>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--card-border)', borderRadius: 12, padding: '12px 16px', backdropFilter: 'blur(12px)' }}>
+          <p style={{ fontWeight: 700, color: 'var(--text-2)', marginBottom: 8, fontSize: 12 }}>Day {label}</p>
+          {payload.map((entry) => (
+            <div key={entry.name} className="flex items-center gap-3 mb-1">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+              <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{entry.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-1)', marginLeft: 'auto' }}>{formatCurrency(entry.value, currency)}</span>
+            </div>
+          ))}
         </div>
       )
     }
@@ -37,80 +28,71 @@ function DailyTrendChart({ data = [] }) {
 
   return (
     <div className="dashboard-glass-card">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3 sm:gap-0">
-        <h3 className="text-lg font-semibold text-text-primary">Monthly Income & Expense Trend</h3>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-primary" />
-            <span className="text-sm text-text-secondary">Income</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-danger" />
-            <span className="text-sm text-text-secondary">Expense</span>
-          </div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-5 gap-2">
+        <h3 className="text-base font-bold" style={{ color: 'var(--text-1)' }}>Monthly Cashflow</h3>
+        <div className="flex items-center gap-4">
+          {[{ color: 'var(--accent)', label: 'Income' }, { color: '#ef4444', label: 'Expense' }].map(({ color, label }) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+              <span className="text-xs" style={{ color: 'var(--text-2)' }}>{label}</span>
+            </div>
+          ))}
         </div>
       </div>
       {data.length > 0 ? (
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart 
-            data={data} 
-            margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
-          >
+        <ResponsiveContainer width="100%" height={260}>
+          <AreaChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
             <defs>
-              <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+              <linearGradient id="gradIncome" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.25} />
+                <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
               </linearGradient>
-              <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#DC2626" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#DC2626" stopOpacity={0}/>
+              <linearGradient id="gradExpense" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.2} />
+                <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
             <XAxis
               dataKey="date"
-              stroke="#6B7280"
-              style={{ fontSize: '12px' }}
+              stroke="var(--text-3)"
+              tick={{ fill: 'var(--text-3)', fontSize: 11 }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
-              stroke="#6B7280"
-              style={{ fontSize: '12px' }}
+              stroke="var(--text-3)"
+              tick={{ fill: 'var(--text-3)', fontSize: 11 }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value) => {
-                const v = Number(value)
-                if (v >= 1000) return `${(v / 1000).toFixed(0)}k ${code}`
-                return `${v} ${code}`
+              tickFormatter={(v) => {
+                const n = Number(v)
+                if (n >= 1000) return `${(n / 1000).toFixed(0)}k`
+                return String(n)
               }}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Legend
-              wrapperStyle={{ fontSize: '14px', paddingTop: '20px' }}
-              iconType="circle"
-            />
             <Area
               type="monotone"
               dataKey="income"
               name="Income"
-              stroke="#4F46E5"
-              strokeWidth={2.5}
-              fill="url(#colorIncome)"
+              stroke="var(--accent)"
+              strokeWidth={2}
+              fill="url(#gradIncome)"
             />
             <Area
               type="monotone"
               dataKey="expense"
               name="Expense"
-              stroke="#DC2626"
-              strokeWidth={2.5}
-              fill="url(#colorExpense)"
+              stroke="#ef4444"
+              strokeWidth={2}
+              fill="url(#gradExpense)"
             />
           </AreaChart>
         </ResponsiveContainer>
       ) : (
-        <div className="flex items-center justify-center h-64 text-text-secondary">
-          <p>No trend data available</p>
+        <div className="flex items-center justify-center" style={{ height: 200, color: 'var(--text-2)' }}>
+          <p className="text-sm">No cashflow data yet</p>
         </div>
       )}
     </div>

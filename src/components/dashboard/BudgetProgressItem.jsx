@@ -2,37 +2,35 @@ import { formatCurrency } from '../../utils/formatters'
 
 function BudgetProgressItem({ category, spent, budget, currency = 'BDT' }) {
   const percentage = budget > 0 ? (spent / budget) * 100 : 0
-  
-  let progressColor = 'bg-success'
-  if (percentage >= 90) {
-    progressColor = 'bg-danger'
-  } else if (percentage >= 70) {
-    progressColor = 'bg-warning'
-  }
+  const pct = Math.min(percentage, 100)
+
+  const fillColor = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#22c55e'
+  const textColor = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#22c55e'
 
   return (
-    <div className="py-4 border-b border-gray-100 last:border-b-0">
+    <div
+      className="py-3.5 last:pb-0"
+      style={{ borderBottom: '1px solid var(--card-border)' }}
+    >
       <div className="flex items-center justify-between mb-2">
-        <h4 className="text-sm font-semibold text-text-primary">{category}</h4>
-        <span className="text-sm font-medium text-text-secondary">
+        <span className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>{category}</span>
+        <span className="text-xs font-medium tabular-nums" style={{ color: 'var(--text-2)' }}>
           {formatCurrency(spent, currency)} / {formatCurrency(budget, currency)}
         </span>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+
+      <div className="progress-track">
         <div
-          className={`h-2.5 rounded-full transition-all duration-300 ${progressColor}`}
-          style={{ width: `${Math.min(percentage, 100)}%` }}
+          className="progress-fill"
+          style={{ width: `${pct}%`, background: fillColor }}
         />
       </div>
-      <div className="flex items-center justify-between mt-2">
-        <span className="text-xs text-text-secondary">
-          {formatCurrency(budget - spent, currency)} remaining
+
+      <div className="flex items-center justify-between mt-1.5">
+        <span className="text-xs" style={{ color: 'var(--text-3)' }}>
+          {formatCurrency(Math.max(budget - spent, 0), currency)} left
         </span>
-        <span className={`text-xs font-medium ${
-          percentage >= 90 ? 'text-danger' : 
-          percentage >= 70 ? 'text-warning' : 
-          'text-success'
-        }`}>
+        <span className="text-xs font-bold" style={{ color: textColor }}>
           {percentage.toFixed(0)}%
         </span>
       </div>

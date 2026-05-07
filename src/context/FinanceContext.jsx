@@ -219,6 +219,46 @@ export function FinanceProvider({ children }) {
       setLedgerMonthKey(monthKeyFromDate(d))
     }
 
+    const addAccount = (name, startingBalance = 0) => {
+      const trimmed = String(name || '').trim()
+      if (!trimmed) return { ok: false, error: 'Account name is required.' }
+      const exists = state.accounts.some((a) => a.name.toLowerCase() === trimmed.toLowerCase())
+      if (exists) return { ok: false, error: 'Account name already exists.' }
+      const acc = { id: safeId(), name: trimmed, startingBalance: Number(startingBalance) || 0 }
+      setState((prev) => ({ ...prev, accounts: [...prev.accounts, acc] }))
+      return { ok: true, account: acc }
+    }
+
+    const renameAccount = (id, newName) => {
+      const trimmed = String(newName || '').trim()
+      if (!trimmed) return { ok: false, error: 'Account name is required.' }
+      const dup = state.accounts.some((a) => a.id !== id && a.name.toLowerCase() === trimmed.toLowerCase())
+      if (dup) return { ok: false, error: 'Account name already exists.' }
+      setState((prev) => ({
+        ...prev,
+        accounts: prev.accounts.map((a) => a.id === id ? { ...a, name: trimmed } : a),
+      }))
+      return { ok: true }
+    }
+
+    const updateAccountBalance = (id, startingBalance) => {
+      const num = Number(startingBalance)
+      if (!Number.isFinite(num)) return { ok: false, error: 'Invalid balance.' }
+      setState((prev) => ({
+        ...prev,
+        accounts: prev.accounts.map((a) => a.id === id ? { ...a, startingBalance: Math.round(num * 100) / 100 } : a),
+      }))
+      return { ok: true }
+    }
+
+    const deleteAccount = (id) => {
+      const inUse = state.transactions.some((t) => t.accountId === id)
+      if (inUse) return { ok: false, error: 'Account has transactions. Move or delete them first.' }
+      if (state.accounts.length <= 1) return { ok: false, error: 'At least one account is required.' }
+      setState((prev) => ({ ...prev, accounts: prev.accounts.filter((a) => a.id !== id) }))
+      return { ok: true }
+    }
+
     const addCategory = (type, name) => {
       const trimmed = String(name || '').trim()
       if (!trimmed) return { ok: false, error: 'Category name is required.' }
@@ -466,6 +506,10 @@ export function FinanceProvider({ children }) {
       budgetRows,
       budgetRowsFull,
       lifetimeNet,
+      addAccount,
+      renameAccount,
+      updateAccountBalance,
+      deleteAccount,
       addCategory,
       removeCategory,
       setCurrency,

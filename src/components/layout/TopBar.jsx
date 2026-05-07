@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Plus, ChevronDown, Menu, LogOut, Cloud } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, ChevronDown, Menu, LogOut, Sun, Moon, Cloud } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useFinance } from '../../context/FinanceContext'
 import { getCurrencySymbol } from '../../utils/formatters'
 import { useQuickAdd } from '../../context/QuickAddContext'
+import { useTheme } from '../../context/ThemeContext'
 
 function LogoutButton() {
   const { logout } = useAuth()
@@ -16,22 +17,19 @@ function LogoutButton() {
   const handleLogout = async () => {
     setLoading(true)
     const { error } = await logout()
-    if (!error) {
-      // Redirect to login after logout (replace to prevent back navigation)
-      router.replace('/login')
-    } else {
-      setLoading(false)
-    }
+    if (!error) router.replace('/login')
+    else setLoading(false)
   }
 
   return (
     <button
       onClick={handleLogout}
       disabled={loading}
-      className="flex min-h-[44px] w-full items-center space-x-2 px-4 py-3 text-left text-sm text-danger hover:bg-gray-50 disabled:opacity-50"
+      className="flex min-h-[44px] w-full items-center gap-2 px-4 py-3 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+      style={{ color: 'var(--danger, #ef4444)' }}
     >
       <LogOut className="w-4 h-4" />
-      <span>{loading ? 'Logging out...' : 'Logout'}</span>
+      <span>{loading ? 'Logging out…' : 'Logout'}</span>
     </button>
   )
 }
@@ -41,98 +39,128 @@ function TopBar({ onMenuClick }) {
   const { user } = useAuth()
   const { currency, ledgerMonthKey, shiftLedgerMonth } = useFinance()
   const { openQuickAdd } = useQuickAdd()
+  const { theme, toggleTheme } = useTheme()
 
   const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
   ]
 
   const [y, m] = (ledgerMonthKey || '').split('-').map(Number)
-  const labelMonth = Number.isFinite(y) && Number.isFinite(m) ? m - 1 : new Date().getMonth()
+  const labelMonth = Number.isFinite(m) ? m - 1 : new Date().getMonth()
   const labelYear = Number.isFinite(y) ? y : new Date().getFullYear()
 
-  const handlePrevMonth = () => shiftLedgerMonth(-1)
-  const handleNextMonth = () => shiftLedgerMonth(1)
+  const initials = user?.email ? user.email[0].toUpperCase() : 'U'
 
   return (
-    <header className="border-b border-white/45 bg-white/50 px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-2xl supports-[backdrop-filter]:bg-white/38 sm:px-4 sm:py-4 lg:border-sea-900/10 lg:bg-white/52 lg:px-6 lg:supports-[backdrop-filter]:bg-white/44">
-      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 sm:gap-4">
-        {/* Left: Menu & Month Selector */}
-        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+    <header
+      className="glass-topbar border-b px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-4 sm:py-3.5 lg:px-6"
+      style={{ borderColor: 'var(--card-border)' }}
+    >
+      <div className="flex items-center justify-between gap-2 sm:gap-4">
+        {/* Left */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
           <button
             onClick={onMenuClick}
-            className="flex-shrink-0 rounded-xl p-2 transition-colors hover:bg-white/50 lg:hidden"
+            className="flex-shrink-0 rounded-xl p-2 transition-colors lg:hidden"
+            style={{ color: 'var(--text-2)' }}
           >
-            <Menu className="h-5 w-5 text-text-secondary" />
+            <Menu className="h-5 w-5" />
           </button>
-          
-          <div className="flex items-center space-x-1 sm:space-x-2">
+
+          {/* Month selector */}
+          <div className="flex items-center gap-1 px-2 py-1.5 rounded-xl" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
             <button
-              onClick={handlePrevMonth}
-              className="flex-shrink-0 rounded-xl p-1.5 transition-colors hover:bg-white/50 lg:hover:bg-white/45"
+              onClick={() => shiftLedgerMonth(-1)}
+              className="rounded-lg p-1 transition-colors hover:opacity-70"
+              style={{ color: 'var(--text-2)' }}
             >
-              <ChevronLeft className="h-4 w-4 text-text-secondary sm:h-5 sm:w-5" />
+              <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="min-w-[100px] max-w-[140px] truncate text-center text-xs font-semibold tracking-tight text-neutral-800 sm:min-w-[120px] sm:text-sm">
-              {monthNames[labelMonth]} {labelYear}
+            <span suppressHydrationWarning className="min-w-[80px] sm:min-w-[120px] text-center text-xs font-bold tracking-tight" style={{ color: 'var(--text-1)' }}>
+              <span suppressHydrationWarning className="hidden sm:inline">{monthNames[labelMonth]}</span>
+              <span suppressHydrationWarning className="sm:hidden">{monthNames[labelMonth].slice(0, 3)}</span>
+              {' '}{labelYear}
             </span>
             <button
-              onClick={handleNextMonth}
-              className="flex-shrink-0 rounded-xl p-1.5 transition-colors hover:bg-white/50 lg:hover:bg-gray-100"
+              onClick={() => shiftLedgerMonth(1)}
+              className="rounded-lg p-1 transition-colors hover:opacity-70"
+              style={{ color: 'var(--text-2)' }}
             >
-              <ChevronRight className="h-4 w-4 text-text-secondary sm:h-5 sm:w-5" />
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {/* Right: Currency & Profile */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        {/* Right */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           {user && (
             <div
-              className="inline-flex min-h-[40px] items-center gap-1 rounded-xl border border-sea-200/65 bg-sea-50/75 px-2 py-1.5 text-xs font-medium text-sea-900 backdrop-blur-sm"
-              title="Finance & agenda sync to your account when online (Firestore)"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+              style={{ background: 'rgba(var(--accent-rgb),0.1)', color: 'var(--accent)', border: '1px solid rgba(var(--accent-rgb),0.2)' }}
             >
-              <Cloud className="w-4 h-4 shrink-0" aria-hidden />
-              <span className="hidden sm:inline whitespace-nowrap">Live sync</span>
+              <Cloud className="w-3.5 h-3.5" />
+              <span>Synced</span>
             </div>
           )}
-          {/* Currency Badge */}
-          <div className="flex min-h-[40px] items-center rounded-xl border border-white/55 bg-white/40 px-2.5 py-1.5 backdrop-blur-md sm:px-3">
-            <span className="text-xs font-semibold tabular-nums text-neutral-800 sm:text-sm" title={currency}>
-              {getCurrencySymbol(currency)}
-            </span>
+
+          {/* Currency */}
+          <div
+            className="flex items-center px-3 py-1.5 rounded-xl text-xs font-bold tabular-nums"
+            style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-1)' }}
+          >
+            {getCurrencySymbol(currency)}
           </div>
 
+          {/* Theme toggle */}
           <button
-            type="button"
-            onClick={openQuickAdd}
-            className="hidden min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-sea-600 p-2.5 text-white shadow-md shadow-sea-600/25 transition-colors hover:bg-sea-700 lg:flex"
-            aria-label="Quick add income or expense"
-            title="Quick add income or expense"
+            onClick={toggleTheme}
+            className="flex items-center justify-center w-9 h-9 rounded-xl transition-all"
+            style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-2)' }}
+            aria-label="Toggle theme"
           >
-            <Plus className="w-5 h-5" aria-hidden />
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          {/* Profile Dropdown */}
+          {/* Quick add */}
+          <button
+            onClick={openQuickAdd}
+            className="accent-btn hidden lg:flex items-center justify-center w-9 h-9"
+            aria-label="Quick add"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+
+          {/* Profile */}
           <div className="relative">
             <button
               onClick={() => setProfileOpen(!profileOpen)}
-              className="flex items-center space-x-2 rounded-xl p-1.5 transition-colors hover:bg-white/50 lg:hover:bg-white/40"
+              className="flex items-center gap-2 rounded-xl p-1.5 transition-colors"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sea-500 to-sea-700 shadow-md shadow-sea-600/30">
-                <span className="text-sm font-medium text-white">U</span>
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm text-white"
+                style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000))' }}
+              >
+                {initials}
               </div>
-              <ChevronDown className="hidden h-4 w-4 text-text-secondary sm:block" />
+              <ChevronDown className="hidden h-3.5 w-3.5 sm:block" style={{ color: 'var(--text-2)' }} />
             </button>
 
             {profileOpen && (
               <>
-                <div 
-                  className="fixed inset-0 z-10" 
-                  onClick={() => setProfileOpen(false)}
-                />
-                <div className="absolute right-0 z-20 mt-2 w-52 max-w-[calc(100vw-2rem)] rounded-2xl border border-white/55 bg-white/82 py-2 shadow-dock backdrop-blur-2xl">
-                  <LogoutButton />
+                <div className="fixed inset-0 z-10" onClick={() => setProfileOpen(false)} />
+                <div
+                  className="absolute right-0 z-20 mt-2 w-52 rounded-2xl p-2 shadow-lg"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--card-border)', backdropFilter: 'blur(20px)' }}
+                >
+                  {user && (
+                    <div className="px-3 py-2 mb-1">
+                      <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-2)' }}>{user.email}</p>
+                    </div>
+                  )}
+                  <div style={{ borderTop: '1px solid var(--card-border)' }}>
+                    <LogoutButton />
+                  </div>
                 </div>
               </>
             )}

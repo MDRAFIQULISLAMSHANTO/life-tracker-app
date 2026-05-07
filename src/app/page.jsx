@@ -13,21 +13,31 @@ export default function LandingPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && user) {
-      router.replace('/dashboard')
-    }
+    if (!loading && user) router.replace('/dashboard')
   }, [user, loading, router])
 
   if (loading || user) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <p className="text-sm text-neutral-500">Loading…</p>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: '#f4f5f7' }}
+      >
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-2xl animate-pulse"
+            style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
+          />
+          <p className="text-sm font-semibold" style={{ color: '#64748b' }}>Loading…</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900 flex flex-col">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ background: '#f4f5f7' }}
+    >
       <Navbar />
       <main className="flex-1">
         <Hero />

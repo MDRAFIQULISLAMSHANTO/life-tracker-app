@@ -1,29 +1,67 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Wallet, Activity, BarChart3, Cloud, ArrowRight } from 'lucide-react'
+import {
+  Wallet, Activity, BarChart3, Cloud, ArrowRight,
+  ShieldCheck, Smartphone, Layers, Lock,
+} from 'lucide-react'
 
-const items = [
+const FEATURES = [
   {
     icon: Wallet,
-    title: 'Money & budgets',
-    text: 'Income, expenses, loans, and monthly budgets in one ledger.',
+    title: 'Full ledger',
+    text: 'Log income, expenses, and loans. Set monthly budgets per category and know exactly where every taka goes.',
+    color: '#6366f1',
+    bg: 'rgba(99,102,241,0.1)',
   },
   {
     icon: BarChart3,
-    title: 'Reports & export',
-    text: 'Charts for the selected month plus Excel export and import.',
+    title: 'Visual reports',
+    text: 'Spending donut, daily trend line, and budget-vs-actual bar chart. Understand your money at a glance.',
+    color: '#22c55e',
+    bg: 'rgba(34,197,94,0.1)',
   },
   {
     icon: Activity,
-    title: 'Trackers',
-    text: 'Habits and goals with simple check-ins.',
+    title: 'Reminders & notes',
+    text: 'Add events, to-do reminders, and quick notes. Get push notifications for pending tasks when installed.',
+    color: '#f59e0b',
+    bg: 'rgba(245,158,11,0.1)',
   },
   {
     icon: Cloud,
-    title: 'Sync',
-    text: 'Signed-in data stays in sync across your devices.',
+    title: 'Real-time sync',
+    text: 'Firebase-powered sync keeps all your devices in perfect agreement — instantly, automatically.',
+    color: '#06b6d4',
+    bg: 'rgba(6,182,212,0.1)',
+  },
+  {
+    icon: Smartphone,
+    title: 'Works as an app',
+    text: 'Install to your home screen on Android or iPhone. Feels and behaves like a native app.',
+    color: '#8b5cf6',
+    bg: 'rgba(139,92,246,0.1)',
+  },
+  {
+    icon: Layers,
+    title: 'Multi-account',
+    text: 'Add bKash, City Bank, cash, or any custom account name. Transfer between them with a tap.',
+    color: '#ef4444',
+    bg: 'rgba(239,68,68,0.1)',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Privacy first',
+    text: 'Your data lives in your own Firebase project. No third-party analytics, no ads, ever.',
+    color: '#22c55e',
+    bg: 'rgba(34,197,94,0.1)',
+  },
+  {
+    icon: Lock,
+    title: 'Secure sign-in',
+    text: 'Google OAuth, email/password, or phone OTP — pick the method that suits you.',
+    color: '#6366f1',
+    bg: 'rgba(99,102,241,0.1)',
   },
 ]
 
@@ -31,67 +69,97 @@ export default function LandingValueSection() {
   const router = useRouter()
 
   return (
-    <section className="border-t border-neutral-200/80 bg-white">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-20 lg:py-24">
-        <div className="max-w-2xl mb-12 sm:mb-14">
-          <h2 className="text-2xl sm:text-3xl font-semibold text-neutral-900 tracking-tight">
-            Everything you need, without clutter
+    <section className="py-16 sm:py-20 lg:py-28">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        {/* Section header */}
+        <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold mb-4"
+            style={{ background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.2)' }}
+          >
+            Everything in one place
+          </div>
+          <h2
+            className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight mb-4"
+            style={{ color: '#0f0f1a' }}
+          >
+            Built for how you{' '}
+            <span style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              actually live
+            </span>
           </h2>
-          <p className="mt-3 text-neutral-600 text-base sm:text-lg leading-relaxed">
-            One app for personal finance and daily productivity—fast on mobile and desktop.
+          <p className="text-base sm:text-lg leading-relaxed" style={{ color: '#64748b' }}>
+            No bloat, no subscriptions required. Fast, beautiful, and works on every device.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-          {items.map(({ icon: Icon, title, text }) => (
+        {/* Feature grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {FEATURES.map(({ icon: Icon, title, text, color, bg }) => (
             <div
               key={title}
-              className="rounded-2xl border border-neutral-200/90 bg-neutral-50/50 p-5 sm:p-6 flex gap-4"
+              className="p-5 rounded-2xl transition-all hover:-translate-y-1"
+              style={{
+                background: 'rgba(255,255,255,0.7)',
+                border: '1px solid rgba(255,255,255,0.9)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.05)',
+              }}
             >
-              <div className="shrink-0 w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <Icon className="w-5 h-5" aria-hidden />
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                style={{ background: bg }}
+              >
+                <Icon className="w-5 h-5" style={{ color }} />
               </div>
-              <div>
-                <h3 className="font-semibold text-neutral-900">{title}</h3>
-                <p className="mt-1.5 text-sm text-neutral-600 leading-relaxed">{text}</p>
-              </div>
+              <h3 className="text-sm font-bold mb-1.5" style={{ color: '#0f0f1a' }}>{title}</h3>
+              <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>{text}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-14 sm:mt-16 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 rounded-2xl border border-neutral-200 bg-neutral-50/80 px-6 py-6 sm:px-8 sm:py-7">
-          <p className="text-neutral-800 font-medium">Ready to try Livio?</p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <button
-              type="button"
-              onClick={() => router.push('/signup')}
-              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 sm:px-6 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-600 shadow-sm"
-            >
-              Create account
-              <ArrowRight className="w-4 h-4" aria-hidden />
-            </button>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-xl border border-neutral-300 bg-white text-sm font-semibold text-neutral-800 hover:bg-neutral-50"
-            >
-              Sign in
-            </Link>
+        {/* CTA banner */}
+        <div
+          className="mt-14 sm:mt-16 rounded-3xl p-6 sm:p-8 lg:p-10 relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg,#6366f1 0%,#8b5cf6 60%,#a78bfa 100%)',
+            boxShadow: '0 24px 80px rgba(99,102,241,0.3)',
+          }}
+        >
+          <div
+            className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20 pointer-events-none"
+            style={{ background: 'rgba(255,255,255,0.4)', transform: 'translate(30%,-30%)' }}
+          />
+          <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+            <div>
+              <h3 className="text-xl sm:text-2xl font-extrabold text-white mb-2">
+                Ready to take control?
+              </h3>
+              <p className="text-white/70 text-sm sm:text-base">
+                Free to start. No credit card needed.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => router.push('/signup')}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all hover:-translate-y-0.5"
+                style={{ background: 'rgba(255,255,255,0.95)', color: '#6366f1' }}
+              >
+                Create account <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/login')}
+                className="flex items-center justify-center px-6 py-3 rounded-2xl text-sm font-bold text-white transition-all hover:bg-white/10"
+                style={{ border: '1.5px solid rgba(255,255,255,0.4)' }}
+              >
+                Sign in
+              </button>
+            </div>
           </div>
         </div>
-
-        <p className="mt-8 text-center text-sm text-neutral-500">
-          <Link href="/features" className="text-primary font-medium hover:underline">
-            Feature details
-          </Link>
-          <span className="mx-2 text-neutral-300">·</span>
-          <Link href="/pricing" className="text-primary font-medium hover:underline">
-            Pricing
-          </Link>
-          <span className="mx-2 text-neutral-300">·</span>
-          <Link href="/contact" className="text-primary font-medium hover:underline">
-            Contact
-          </Link>
-        </p>
       </div>
     </section>
   )

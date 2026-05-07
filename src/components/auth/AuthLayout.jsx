@@ -1,30 +1,48 @@
-import Logo from '../common/Logo'
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 
 function AuthLayout({ children, title, subtitle }) {
+  const router = useRouter()
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: 'var(--bg-alt)' }}>
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <Logo variant="icon" size="auth" animated={false} />
+
+        {/* Back button */}
+        <button
+          type="button"
+          onClick={() => router.push('/')}
+          className="flex items-center gap-2 text-sm font-semibold mb-6 transition-opacity hover:opacity-70"
+          style={{ color: 'var(--text-2)' }}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to home
+        </button>
+
+        {/* Logo + brand */}
+        <div className="text-center mb-7">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl mx-auto mb-3 shadow-lg"
+            style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000 30%))' }}
+          >
+            L
           </div>
-          {subtitle && <p className="text-text-secondary">{subtitle}</p>}
+          <h1 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>Ojo</h1>
+          {subtitle && <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>{subtitle}</p>}
         </div>
 
-        {/* Auth Card */}
-        <div className="bg-background-card rounded-2xl shadow-card p-8">
+        {/* Card */}
+        <div className="glass-card">
           {title && (
-            <h2 className="text-2xl font-semibold text-text-primary mb-6 text-center">
-              {title}
-            </h2>
+            <h2 className="text-lg font-extrabold mb-5 text-center" style={{ color: 'var(--text-1)' }}>{title}</h2>
           )}
           {children}
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-sm text-text-secondary mt-6">
-          Secure authentication powered by Firebase
+        <p className="text-center text-xs mt-5" style={{ color: 'var(--text-3)' }}>
+          Secured by Firebase Authentication
         </p>
       </div>
     </div>
