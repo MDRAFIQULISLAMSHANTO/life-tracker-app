@@ -29,7 +29,7 @@ function AuthLayout({ children, title, subtitle }) {
           >
             L
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>Ojo</h1>
+          <h1 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>Livio</h1>
           {subtitle && <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>{subtitle}</p>}
         </div>
 

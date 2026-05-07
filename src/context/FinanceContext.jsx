@@ -208,6 +208,14 @@ export function FinanceProvider({ children }) {
       return acc
     }, 0)
 
+    const accountBalances = state.accounts.map((acc) => {
+      const txForAcc = state.transactions.filter((t) => t.accountId === acc.id)
+      const income = txForAcc.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0)
+      const expense = txForAcc.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0)
+      return { ...acc, balance: (acc.startingBalance || 0) + income - expense }
+    })
+    const totalBalance = accountBalances.reduce((s, a) => s + a.balance, 0)
+
     const setLedgerMonthKey = (key) => {
       if (!key || !/^\d{4}-\d{2}$/.test(key)) return
       setState((prev) => ({ ...prev, ledgerMonthKey: key }))
@@ -506,6 +514,8 @@ export function FinanceProvider({ children }) {
       budgetRows,
       budgetRowsFull,
       lifetimeNet,
+      accountBalances,
+      totalBalance,
       addAccount,
       renameAccount,
       updateAccountBalance,

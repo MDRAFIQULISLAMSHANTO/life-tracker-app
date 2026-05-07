@@ -90,7 +90,16 @@
    BASE
 ═══════════════════════════════════════════ */
 @layer base {
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior: smooth;
+    /* iOS PWA: --vh set via JS in ServiceWorkerRegistrar to fix stale viewport on resume */
+  }
+
+  /* Override Tailwind min-h-screen to use dynamic viewport height on iOS */
+  .min-h-screen {
+    min-height: 100vh;
+    min-height: calc(var(--vh, 1vh) * 100);
+  }
 
   * {
     -webkit-tap-highlight-color: transparent;

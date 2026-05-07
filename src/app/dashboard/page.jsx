@@ -54,7 +54,7 @@ export default function DashboardPage() {
   const { openQuickAdd } = useQuickAdd()
   const {
     currency, ledgerMonthKey, transactionsInLedgerMonth,
-    monthIncome, monthExpense, monthNet, lifetimeNet,
+    monthIncome, monthExpense, monthNet, totalBalance, accountBalances,
     expenseByCategory, budgetRowsFull, transactions,
   } = useFinance()
   const { reminders } = useDashboardToday()
@@ -158,14 +158,38 @@ export default function DashboardPage() {
 
               {balanceVisible ? (
                 <p className="text-3xl sm:text-4xl font-extrabold text-white tabular-nums tracking-tight mb-1">
-                  {formatCurrency(lifetimeNet, currency)}
+                  {formatCurrency(totalBalance, currency)}
                 </p>
               ) : (
                 <p className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-1 select-none">
                   ••••••
                 </p>
               )}
-              <p className="text-xs text-white/60 mb-6">{ledgerMonthKey} · tap eye to reveal</p>
+              <p className="text-xs text-white/60 mb-4">{ledgerMonthKey} · tap eye to reveal</p>
+
+              {/* Account breakdown */}
+              <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scroll-touch" style={{ scrollbarWidth: 'none' }}>
+                {accountBalances.map((acc, i) => {
+                  const colors = [
+                    ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.12)'],
+                    ['rgba(16,185,129,0.35)', 'rgba(5,150,105,0.25)'],
+                    ['rgba(245,158,11,0.35)', 'rgba(217,119,6,0.25)'],
+                    ['rgba(236,72,153,0.35)', 'rgba(219,39,119,0.25)'],
+                    ['rgba(139,92,246,0.35)', 'rgba(124,58,237,0.25)'],
+                    ['rgba(6,182,212,0.35)', 'rgba(8,145,178,0.25)'],
+                  ]
+                  const [bg, border] = colors[i % colors.length]
+                  return (
+                    <div key={acc.id} className="flex-shrink-0 rounded-xl px-3 py-2 min-w-[100px]"
+                      style={{ background: bg, border: `1px solid ${border}` }}>
+                      <p className="text-[10px] font-bold text-white/70 uppercase tracking-wide truncate">{acc.name}</p>
+                      <p className="text-sm font-extrabold text-white tabular-nums">
+                        {balanceVisible ? formatCurrency(acc.balance, currency) : '••••'}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <Link href="/dashboard/income"
