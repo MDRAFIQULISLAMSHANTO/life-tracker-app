@@ -5,7 +5,7 @@ import { ThemeProvider } from '../context/ThemeContext'
 import ServiceWorkerRegistrar from '../components/ServiceWorkerRegistrar'
 
 export const metadata = {
-  title: 'Ojo - Personal Finance',
+  title: 'Livio - Personal Finance',
   description: 'Personal finance management — budgets, accounts, and insights',
   manifest: '/site.webmanifest',
 }

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { User, Wallet, RotateCcw, CalendarRange, Settings2, Smartphone, Download, CheckCircle2, CreditCard, Bell } from 'lucide-react'
+import { User, Wallet, RotateCcw, CalendarRange, Settings2, Smartphone, Download, CheckCircle2, CreditCard, Bell, LogOut } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
+import { useRouter } from 'next/navigation'
 import { useFinance } from '../../../context/FinanceContext'
 import { useDashboardToday } from '../../../context/DashboardTodayContext'
 import CategoryManager from '../../../components/finance/CategoryManager'
@@ -91,6 +92,29 @@ function InstallAppSection() {
   )
 }
 
+function LogoutButton() {
+  const { logout } = useAuth()
+  const router = useRouter()
+  const [pending, setPending] = useState(false)
+  const handle = async () => {
+    setPending(true)
+    const { error } = await logout()
+    if (!error) router.replace('/login')
+    else setPending(false)
+  }
+  return (
+    <button
+      onClick={handle}
+      disabled={pending}
+      className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-all disabled:opacity-50 hover:opacity-80"
+      style={{ background: 'rgba(220,38,38,0.1)', color: 'var(--danger, #dc2626)', border: '1px solid rgba(220,38,38,0.2)' }}
+    >
+      <LogOut className="w-4 h-4" />
+      {pending ? 'Logging out…' : 'Log out'}
+    </button>
+  )
+}
+
 export default function SettingsPage() {
   const { user, loading } = useAuth()
   const { currency, setCurrency, accounts, addAccount, renameAccount, deleteAccount, updateAccountBalance, expenseCategories, incomeCategories, otherCategories, addCategory, removeCategory, resetFinanceDataForMonth } = useFinance()
@@ -175,6 +199,9 @@ export default function SettingsPage() {
           </div>
           <p className="text-sm" style={{ color: 'var(--text-2)' }}>Signed in as</p>
           <p className="mt-1 font-bold break-all text-sm sm:text-base" style={{ color: 'var(--text-1)' }}>{user.email || user.uid}</p>
+          <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--card-border)' }}>
+            <LogoutButton />
+          </div>
         </section>
 
         {/* Finance */}

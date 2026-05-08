@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { useFinance } from '../../../context/FinanceContext'
@@ -10,6 +10,15 @@ import { formatCurrency } from '../../../utils/formatters'
 const labelCls = 'block text-xs font-bold mb-1.5 uppercase tracking-wide'
 const labelStyle = { color: 'var(--text-3)' }
 
+function smartDefaultDate(ledgerMonthKey) {
+  const today = new Date().toISOString().slice(0, 10)
+  if (!ledgerMonthKey) return today
+  if (today.slice(0, 7) === ledgerMonthKey) return today
+  const [y, m] = ledgerMonthKey.split('-').map(Number)
+  const lastDay = new Date(y, m, 0).getDate()
+  return `${ledgerMonthKey}-${String(lastDay).padStart(2, '0')}`
+}
+
 export default function IncomePage() {
   const { user, loading } = useAuth()
   const { currency, ledgerMonthKey, incomeCategories, accounts, transactions, addCategory, removeCategory, addTransaction, deleteTransaction } = useFinance()
@@ -17,8 +26,10 @@ export default function IncomePage() {
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState(incomeCategories[0] || 'Other')
   const [description, setDescription] = useState('')
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(() => smartDefaultDate(ledgerMonthKey))
   const [accountId, setAccountId] = useState(accounts[0]?.id || '')
+
+  useEffect(() => { setDate(smartDefaultDate(ledgerMonthKey)) }, [ledgerMonthKey])
   const [submitError, setSubmitError] = useState('')
 
   const incomeTx = useMemo(() =>

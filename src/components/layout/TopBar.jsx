@@ -1,41 +1,15 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Plus, ChevronDown, Menu, LogOut, Sun, Moon, Cloud } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Menu, Sun, Moon, Cloud } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useFinance } from '../../context/FinanceContext'
 import { getCurrencySymbol } from '../../utils/formatters'
 import { useQuickAdd } from '../../context/QuickAddContext'
 import { useTheme } from '../../context/ThemeContext'
 
-function LogoutButton() {
-  const { logout } = useAuth()
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-
-  const handleLogout = async () => {
-    setLoading(true)
-    const { error } = await logout()
-    if (!error) router.replace('/login')
-    else setLoading(false)
-  }
-
-  return (
-    <button
-      onClick={handleLogout}
-      disabled={loading}
-      className="flex min-h-[44px] w-full items-center gap-2 px-4 py-3 text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-      style={{ color: 'var(--danger, #ef4444)' }}
-    >
-      <LogOut className="w-4 h-4" />
-      <span>{loading ? 'Logging out…' : 'Logout'}</span>
-    </button>
-  )
-}
-
 function TopBar({ onMenuClick }) {
-  const [profileOpen, setProfileOpen] = useState(false)
+  const router = useRouter()
   const { user } = useAuth()
   const { currency, ledgerMonthKey, shiftLedgerMonth } = useFinance()
   const { openQuickAdd } = useQuickAdd()
@@ -131,40 +105,20 @@ function TopBar({ onMenuClick }) {
             <Plus className="w-4 h-4" />
           </button>
 
-          {/* Profile */}
-          <div className="relative">
-            <button
-              onClick={() => setProfileOpen(!profileOpen)}
-              className="flex items-center gap-2 rounded-xl p-1.5 transition-colors"
+          {/* Avatar → Settings */}
+          <button
+            onClick={() => router.push('/dashboard/settings')}
+            className="flex items-center justify-center rounded-full transition-all hover:scale-105 active:scale-95"
+            aria-label="Go to settings"
+            title={user?.email || 'Settings'}
+          >
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm text-white"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)', boxShadow: '0 2px 8px rgba(99,102,241,0.35)' }}
             >
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm text-white"
-                style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000))' }}
-              >
-                {initials}
-              </div>
-              <ChevronDown className="hidden h-3.5 w-3.5 sm:block" style={{ color: 'var(--text-2)' }} />
-            </button>
-
-            {profileOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setProfileOpen(false)} />
-                <div
-                  className="absolute right-0 z-20 mt-2 w-52 rounded-2xl p-2 shadow-lg"
-                  style={{ background: 'var(--surface)', border: '1px solid var(--card-border)', backdropFilter: 'blur(20px)' }}
-                >
-                  {user && (
-                    <div className="px-3 py-2 mb-1">
-                      <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-2)' }}>{user.email}</p>
-                    </div>
-                  )}
-                  <div style={{ borderTop: '1px solid var(--card-border)' }}>
-                    <LogoutButton />
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+              {initials}
+            </div>
+          </button>
         </div>
       </div>
     </header>

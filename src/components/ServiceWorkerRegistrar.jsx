@@ -22,14 +22,21 @@ export default function ServiceWorkerRegistrar() {
       }
     }
 
+    const onFocus = () => { setVh() }
+    const onPageShow = (e) => { if (e.persisted) onVisibility() }
+
     setVh()
     window.addEventListener('resize', setVh)
     window.addEventListener('orientationchange', setVh)
+    window.addEventListener('focus', onFocus)
+    window.addEventListener('pageshow', onPageShow)
     document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
       window.removeEventListener('resize', setVh)
       window.removeEventListener('orientationchange', setVh)
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('pageshow', onPageShow)
       document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])

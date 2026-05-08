@@ -130,10 +130,11 @@ export default function DashboardPage() {
           <div
             className="hero-card relative overflow-hidden"
             style={{
-              background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000 45%))',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #ec4899 100%)',
               borderRadius: '1.5rem',
               padding: '1.5rem',
               minHeight: 200,
+              boxShadow: '0 8px 40px rgba(99,102,241,0.35), 0 2px 8px rgba(0,0,0,0.15)',
             }}
           >
             <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-20" style={{ background: 'rgba(255,255,255,0.3)' }} />
@@ -171,18 +172,17 @@ export default function DashboardPage() {
               <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scroll-touch" style={{ scrollbarWidth: 'none' }}>
                 {accountBalances.map((acc, i) => {
                   const colors = [
-                    ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.12)'],
-                    ['rgba(16,185,129,0.35)', 'rgba(5,150,105,0.25)'],
-                    ['rgba(245,158,11,0.35)', 'rgba(217,119,6,0.25)'],
-                    ['rgba(236,72,153,0.35)', 'rgba(219,39,119,0.25)'],
-                    ['rgba(139,92,246,0.35)', 'rgba(124,58,237,0.25)'],
-                    ['rgba(6,182,212,0.35)', 'rgba(8,145,178,0.25)'],
+                    'linear-gradient(135deg,rgba(255,255,255,0.28),rgba(255,255,255,0.12))',
+                    'linear-gradient(135deg,rgba(16,185,129,0.5),rgba(5,150,105,0.3))',
+                    'linear-gradient(135deg,rgba(245,158,11,0.5),rgba(217,119,6,0.3))',
+                    'linear-gradient(135deg,rgba(236,72,153,0.5),rgba(219,39,119,0.3))',
+                    'linear-gradient(135deg,rgba(139,92,246,0.5),rgba(124,58,237,0.3))',
+                    'linear-gradient(135deg,rgba(6,182,212,0.5),rgba(8,145,178,0.3))',
                   ]
-                  const [bg, border] = colors[i % colors.length]
                   return (
-                    <div key={acc.id} className="flex-shrink-0 rounded-xl px-3 py-2 min-w-[100px]"
-                      style={{ background: bg, border: `1px solid ${border}` }}>
-                      <p className="text-[10px] font-bold text-white/70 uppercase tracking-wide truncate">{acc.name}</p>
+                    <div key={acc.id} className="flex-shrink-0 rounded-xl px-3 py-2.5 min-w-[110px]"
+                      style={{ background: colors[i % colors.length], backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                      <p className="text-[10px] font-bold text-white/70 uppercase tracking-wide truncate mb-0.5">{acc.name}</p>
                       <p className="text-sm font-extrabold text-white tabular-nums">
                         {balanceVisible ? formatCurrency(acc.balance, currency) : '••••'}
                       </p>
