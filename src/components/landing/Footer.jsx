@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Logo from '../common/Logo'
 
 const LINKS = [
   { href: '/features', label: 'Features' },
@@ -19,14 +20,8 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           {/* Logo + tagline */}
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div
-                className="w-7 h-7 rounded-xl flex items-center justify-center text-white font-black text-xs"
-                style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
-              >
-                L
-              </div>
-              <span className="font-extrabold text-sm tracking-tight" style={{ color: '#0f0f1a' }}>Livio</span>
+            <div className="mb-2">
+              <Logo height={42} />
             </div>
             <p className="text-xs max-w-xs leading-relaxed" style={{ color: '#94a3b8' }}>
               Personal finance and productivity. Fast on every device.

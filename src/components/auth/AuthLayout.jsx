@@ -25,7 +25,7 @@ function AuthLayout({ children, title, subtitle }) {
         {/* Logo */}
         <div className="text-center mb-7">
           <div className="flex justify-center mb-2">
-            <Logo height={44} />
+            <Logo height={64} />
           </div>
           {subtitle && <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>{subtitle}</p>}
         </div>

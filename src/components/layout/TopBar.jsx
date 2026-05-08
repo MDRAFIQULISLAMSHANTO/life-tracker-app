@@ -111,7 +111,7 @@ function TopBar({ onMenuClick }) {
             aria-label="Go to settings"
             title={user?.email || 'Settings'}
           >
-            <Logo height={28} />
+            <Logo height={38} />
           </button>
         </div>
       </div>

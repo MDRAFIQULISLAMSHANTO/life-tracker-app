@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { CalendarDays, Edit3, Plus, Save, Trash2, Wallet } from 'lucide-react'
+import { CalendarDays, Edit3, Plus, Save, Trash2, User, Wallet } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { useFinance } from '../../../context/FinanceContext'
 import { formatCurrency } from '../../../utils/formatters'
@@ -18,15 +18,34 @@ export default function LoansPage() {
   const [borrowDate, setBorrowDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [extendedDate, setExtendedDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [reason, setReason] = useState('')
+  const [person, setPerson] = useState('')
   const [addToIncome, setAddToIncome] = useState(true)
   const [error, setError] = useState('')
 
+  // Current month loans
   const visible = useMemo(() =>
     [...loans]
       .filter((l) => l.borrowDate && String(l.borrowDate).slice(0, 7) === ledgerMonthKey)
       .sort((a, b) => new Date(b.borrowDate) - new Date(a.borrowDate)),
     [loans, ledgerMonthKey]
   )
+
+  // All-time per-person totals (all months, all loans)
+  const personSummary = useMemo(() => {
+    const map = {}
+    loans.forEach((l) => {
+      const name = (l.person || '').trim()
+      if (!name) return
+      map[name] = (map[name] || 0) + Number(l.amount || 0)
+    })
+    return Object.entries(map).sort((a, b) => b[1] - a[1])
+  }, [loans])
+
+  // Unique person names for datalist autocomplete
+  const uniquePersons = useMemo(() => {
+    const names = new Set(loans.map((l) => (l.person || '').trim()).filter(Boolean))
+    return [...names]
+  }, [loans])
 
   const totals = useMemo(() => ({
     totalBorrowed: visible.reduce((s, l) => s + Number(l.amount || 0), 0),
@@ -37,13 +56,14 @@ export default function LoansPage() {
   if (!user) return null
 
   const resetForm = () => {
-    setEditingId(null); setAmount(''); setReason(''); setAddToIncome(true); setError('')
+    setEditingId(null); setAmount(''); setReason(''); setPerson(''); setAddToIncome(true); setError('')
     setBorrowDate(new Date().toISOString().slice(0, 10))
     setExtendedDate(new Date().toISOString().slice(0, 10))
   }
 
   const startEdit = (l) => {
     setEditingId(l.id); setAmount(String(l.amount ?? '')); setReason(l.reason || '')
+    setPerson(l.person || '')
     setBorrowDate(l.borrowDate || new Date().toISOString().slice(0, 10))
     setExtendedDate(l.extendedDate || new Date().toISOString().slice(0, 10))
     setAddToIncome(!!l.addToIncome); setError('')
@@ -51,7 +71,7 @@ export default function LoansPage() {
 
   const onSubmit = (e) => {
     e.preventDefault(); setError('')
-    const result = upsertLoan({ id: editingId || undefined, amount, borrowDate, extendedDate, reason, addToIncome })
+    const result = upsertLoan({ id: editingId || undefined, amount, borrowDate, extendedDate, reason, addToIncome, person })
     if (!result.ok) { setError(result.error || 'Unable to save.'); return }
     resetForm()
   }
@@ -66,7 +86,7 @@ export default function LoansPage() {
             Borrowed money for <span className="font-bold" style={{ color: 'var(--accent)' }}>{ledgerMonthKey}</span>
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           {[
             { label: 'Total borrowed', value: totals.totalBorrowed },
             { label: 'Counted as income', value: totals.incomeCounted },
@@ -78,6 +98,38 @@ export default function LoansPage() {
           ))}
         </div>
       </div>
+
+      {/* Per-person summary */}
+      {personSummary.length > 0 && (
+        <div className="glass-card">
+          <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-3)' }}>
+            Lender Summary — All Time
+          </p>
+          <div className="scroll-touch flex gap-3 overflow-x-auto pb-1">
+            {personSummary.map(([name, total]) => (
+              <div
+                key={name}
+                className="flex-shrink-0"
+                style={{
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--card-border)',
+                  borderRadius: 14,
+                  padding: '10px 16px',
+                  minWidth: 110,
+                }}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <User className="w-3 h-3" style={{ color: 'var(--text-3)' }} />
+                  <span className="text-xs font-bold truncate max-w-[90px]" style={{ color: 'var(--text-1)' }}>{name}</span>
+                </div>
+                <p className="text-sm font-extrabold tabular-nums" style={{ color: 'var(--accent)' }}>
+                  {formatCurrency(total, currency)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Form */}
       <div className="glass-card">
@@ -101,10 +153,30 @@ export default function LoansPage() {
           <div>
             <label className={labelCls} style={labelStyle}>Amount</label>
             <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
-              min="0" step="0.01" required placeholder="0.00" className="glass-input min-h-[44px]" />
+              min="0" step="0.01" required placeholder="0.00" className="glass-input min-h-[44px]" inputMode="decimal" />
           </div>
 
-          <div className="flex items-center">
+          {/* Person field with datalist autocomplete */}
+          <div>
+            <label className={labelCls} style={labelStyle}>Lender (person)</label>
+            <div className="relative">
+              <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-3)' }} />
+              <input
+                type="text"
+                value={person}
+                onChange={(e) => setPerson(e.target.value)}
+                list="loan-persons-list"
+                placeholder="Who lent you the money?"
+                className="glass-input pl-9 min-h-[44px]"
+                autoComplete="off"
+              />
+              <datalist id="loan-persons-list">
+                {uniquePersons.map((p) => <option key={p} value={p} />)}
+              </datalist>
+            </div>
+          </div>
+
+          <div className="md:col-span-2 flex items-center">
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <div
                 onClick={() => setAddToIncome((v) => !v)}
@@ -161,7 +233,7 @@ export default function LoansPage() {
         </form>
       </div>
 
-      {/* List */}
+      {/* Loan List */}
       <div className="glass-card">
         <h2 className="text-base font-extrabold mb-4" style={{ color: 'var(--text-1)' }}>
           Loans in {ledgerMonthKey}
@@ -178,6 +250,13 @@ export default function LoansPage() {
                     <span className="text-base font-extrabold tabular-nums" style={{ color: 'var(--text-1)' }}>
                       {formatCurrency(Number(l.amount || 0), currency)}
                     </span>
+                    {l.person && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: 'rgba(var(--accent-rgb),0.10)', color: 'var(--accent)' }}>
+                        <User className="w-2.5 h-2.5" />
+                        {l.person}
+                      </span>
+                    )}
                     <span className="badge-income text-[10px]">{l.addToIncome ? 'Income' : 'Loan only'}</span>
                   </div>
                   <p className="text-xs" style={{ color: 'var(--text-3)' }}>

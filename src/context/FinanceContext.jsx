@@ -420,7 +420,7 @@ export function FinanceProvider({ children }) {
       }
     }
 
-    const upsertLoan = ({ id, amount, borrowDate, extendedDate, reason, addToIncome }) => {
+    const upsertLoan = ({ id, amount, borrowDate, extendedDate, reason, addToIncome, person }) => {
       const num = Number(amount)
       if (!Number.isFinite(num) || num <= 0) return { ok: false, error: 'Amount must be > 0.' }
       const loanId = id || safeId()
@@ -430,6 +430,7 @@ export function FinanceProvider({ children }) {
         borrowDate: borrowDate ? String(borrowDate).slice(0, 10) : todayISODate(),
         extendedDate: extendedDate ? String(extendedDate).slice(0, 10) : todayISODate(),
         reason: String(reason || '').trim(),
+        person: String(person || '').trim(),
         addToIncome: !!addToIncome,
       }
       setState((prev) => {
@@ -437,7 +438,8 @@ export function FinanceProvider({ children }) {
         const loans = existing ? prev.loans.map((l) => (l.id === loanId ? loanBase : l)) : [loanBase, ...prev.loans]
         const txType = loanBase.addToIncome ? 'income' : 'loan'
         const category = 'Loans'
-        const desc = loanBase.reason ? `Loan: ${loanBase.reason}` : 'Loan'
+        const personStr = loanBase.person ? ` from ${loanBase.person}` : ''
+        const desc = `Loan${personStr}${loanBase.reason ? `: ${loanBase.reason}` : ''}`
         const linkedTxIndex = prev.transactions.findIndex((t) => t.sourceLoanId === loanId)
         const linkedTx = {
           id: linkedTxIndex >= 0 ? prev.transactions[linkedTxIndex].id : safeId(),

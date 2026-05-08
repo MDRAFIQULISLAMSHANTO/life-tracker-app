@@ -75,7 +75,7 @@ function Sidebar({ isOpen, onToggle }) {
       >
         {/* Logo */}
         <div className="flex items-center justify-between px-4 py-5 sm:px-5" style={{ borderBottom: '1px solid var(--card-border)' }}>
-          <Logo height={26} />
+          <Logo height={44} />
           <button
             type="button"
             onClick={onToggle}

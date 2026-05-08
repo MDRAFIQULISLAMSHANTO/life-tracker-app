@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { User, Wallet, RotateCcw, CalendarRange, Settings2, Smartphone, Download, CheckCircle2, CreditCard, Bell, LogOut } from 'lucide-react'
+import { User, Wallet, RotateCcw, CalendarRange, Settings2, Smartphone, Download, CheckCircle2, CreditCard, Bell, LogOut, Palette } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useFinance } from '../../../context/FinanceContext'
 import { useDashboardToday } from '../../../context/DashboardTodayContext'
 import CategoryManager from '../../../components/finance/CategoryManager'
+import { LEATHER_THEMES } from '../../../components/dashboard/WalletCard'
 import AccountManager from '../../../components/finance/AccountManager'
 import NotificationSettings from '../../../components/settings/NotificationSettings'
 import { CURRENCY_OPTIONS } from '../../../utils/currencyOptions'
@@ -120,6 +121,7 @@ export default function SettingsPage() {
   const { currency, setCurrency, accounts, addAccount, renameAccount, deleteAccount, updateAccountBalance, expenseCategories, incomeCategories, otherCategories, addCategory, removeCategory, resetFinanceDataForMonth } = useFinance()
   const { resetDashboardForMonth } = useDashboardToday()
 
+  const [walletTheme, setWalletTheme] = useState(3)
   const [msg, setMsg] = useState('')
   const [currencyFilter, setCurrencyFilter] = useState('')
   const [resetOpen, setResetOpen] = useState(false)
@@ -135,6 +137,16 @@ export default function SettingsPage() {
     if (q && current && !base.some((c) => c.code === current.code)) return [current, ...base]
     return base
   }, [currencyFilter, currency])
+
+  useEffect(() => {
+    const saved = localStorage.getItem('livio_wallet_theme')
+    if (saved !== null) setWalletTheme(Number(saved))
+  }, [])
+
+  const handleWalletTheme = (idx) => {
+    setWalletTheme(idx)
+    localStorage.setItem('livio_wallet_theme', String(idx))
+  }
 
   if (loading) return <div className="text-sm" style={{ color: 'var(--text-2)' }}>Loading…</div>
   if (!user) return null
@@ -199,9 +211,6 @@ export default function SettingsPage() {
           </div>
           <p className="text-sm" style={{ color: 'var(--text-2)' }}>Signed in as</p>
           <p className="mt-1 font-bold break-all text-sm sm:text-base" style={{ color: 'var(--text-1)' }}>{user.email || user.uid}</p>
-          <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--card-border)' }}>
-            <LogoutButton />
-          </div>
         </section>
 
         {/* Finance */}
@@ -290,6 +299,60 @@ export default function SettingsPage() {
             <CategoryManager title="Income categories" categories={incomeCategories} onAdd={(n) => addCategory('income', n)} onRemove={(n) => removeCategory('income', n)} />
             <CategoryManager title="Other categories" categories={otherCategories} onAdd={(n) => addCategory('other', n)} onRemove={(n) => removeCategory('other', n)} />
           </div>
+        </section>
+
+        {/* Wallet Cover — leather theme picker */}
+        <section className={sectionClass} style={{ borderTop: '1px solid var(--card-border)' }}>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(var(--accent-rgb),0.1)' }}>
+              <Palette className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-extrabold" style={{ color: 'var(--text-1)' }}>Wallet Cover</h2>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-2)' }}>Choose your leather wallet colour</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            {LEATHER_THEMES.map((t, i) => (
+              <div key={t.id} style={{ flexShrink: 0, textAlign: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => handleWalletTheme(i)}
+                  style={{
+                    display: 'block',
+                    width: 64, height: 46, borderRadius: 12, cursor: 'pointer',
+                    background: t.swatch,
+                    border: i === walletTheme ? '2.5px solid var(--accent)' : '2px solid transparent',
+                    outline: i === walletTheme ? '2px solid rgba(var(--accent-rgb),0.25)' : 'none',
+                    outlineOffset: 2,
+                    position: 'relative', overflow: 'hidden',
+                    transition: 'transform 0.15s',
+                    boxShadow: i === walletTheme ? '0 4px 14px rgba(0,0,0,0.25)' : '0 2px 8px rgba(0,0,0,0.15)',
+                  }}
+                >
+                  {/* Mini stitch */}
+                  <div style={{ position: 'absolute', inset: 4, borderRadius: 8, border: '1px dashed rgba(255,255,255,0.30)', pointerEvents: 'none' }} />
+                </button>
+                <p style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 5, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                  {t.name}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Logout — always at the very end */}
+        <section className={sectionClass} style={{ borderTop: '1px solid var(--card-border)' }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.08)' }}>
+              <LogOut className="w-5 h-5" style={{ color: '#dc2626' }} />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-extrabold" style={{ color: 'var(--text-1)' }}>Sign out</h2>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-2)' }}>You are signed in as {user.email || user.uid}</p>
+            </div>
+          </div>
+          <LogoutButton />
         </section>
       </div>
 

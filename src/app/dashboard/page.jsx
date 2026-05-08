@@ -127,22 +127,24 @@ export default function DashboardPage() {
             totalBalance={totalBalance}
             currency={currency}
             formatCurrency={formatCurrency}
+            monthNet={monthNet}
+            monthIncome={monthIncome}
           />
         </div>
 
         {/* Stats Grid */}
         <div ref={statsRef} className="lg:col-span-2 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 content-start">
           <SummaryCard title="Monthly Income" value={formatCurrency(monthIncome, currency)}
-            change="This month" changeType="neutral" icon={TrendingUp} iconColor="success" />
+            change="This month" changeType="neutral" icon={TrendingUp} />
           <SummaryCard title="Monthly Expense" value={formatCurrency(monthExpense, currency)}
-            change="This month" changeType="neutral" icon={TrendingDown} iconColor="danger" />
+            change="This month" changeType="neutral" icon={TrendingDown} />
           <SummaryCard title="Monthly Net" value={formatCurrency(monthNet, currency)}
             change={monthNet >= 0 ? 'Surplus' : 'Deficit'}
-            changeType={monthNet >= 0 ? 'positive' : 'negative'} icon={Wallet} iconColor="primary" />
+            changeType={monthNet >= 0 ? 'positive' : 'negative'} icon={Wallet} />
           <SummaryCard title="Savings Rate" value={`${Math.max(0, savingsRate)}%`}
             change="of income"
             changeType={savingsRate >= 20 ? 'positive' : savingsRate < 0 ? 'negative' : 'neutral'}
-            icon={Percent} iconColor={savingsRate >= 20 ? 'success' : 'warning'} />
+            icon={Percent} />
         </div>
       </div>
 
