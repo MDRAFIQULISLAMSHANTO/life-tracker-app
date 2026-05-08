@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Logo from '../common/Logo'
+
 import {
   LayoutDashboard,
   Wallet,
@@ -74,12 +75,7 @@ function Sidebar({ isOpen, onToggle }) {
       >
         {/* Logo */}
         <div className="flex items-center justify-between px-4 py-5 sm:px-5" style={{ borderBottom: '1px solid var(--card-border)' }}>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--accent)', boxShadow: '0 4px 12px rgba(var(--accent-rgb),0.35)' }}>
-              <span className="text-white font-bold text-sm">L</span>
-            </div>
-            <span className="font-bold text-lg" style={{ color: 'var(--text-1)' }}>Livio</span>
-          </div>
+          <Logo height={26} />
           <button
             type="button"
             onClick={onToggle}

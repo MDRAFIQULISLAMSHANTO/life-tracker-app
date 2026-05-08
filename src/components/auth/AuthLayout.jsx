@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import Logo from '../common/Logo'
 
 function AuthLayout({ children, title, subtitle }) {
   const router = useRouter()
@@ -21,15 +22,11 @@ function AuthLayout({ children, title, subtitle }) {
           Back to home
         </button>
 
-        {/* Logo + brand */}
+        {/* Logo */}
         <div className="text-center mb-7">
-          <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-xl mx-auto mb-3 shadow-lg"
-            style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000 30%))' }}
-          >
-            L
+          <div className="flex justify-center mb-2">
+            <Logo height={44} />
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>Livio</h1>
           {subtitle && <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>{subtitle}</p>}
         </div>
 

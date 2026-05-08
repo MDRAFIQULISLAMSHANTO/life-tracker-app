@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Menu, X, Zap } from 'lucide-react'
+import Logo from '../common/Logo'
 
 const NAV_LINKS = [
   { href: '/features', label: 'Features' },
@@ -36,12 +37,8 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md"
-              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
-              L
-            </div>
-            <span className="font-extrabold text-base tracking-tight" style={{ color: '#0f0f1a' }}>Livio</span>
+          <Link href="/" className="flex items-center group">
+            <Logo height={28} />
           </Link>
 
           {/* Desktop links */}
