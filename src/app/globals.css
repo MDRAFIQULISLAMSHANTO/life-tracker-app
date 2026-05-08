@@ -396,3 +396,40 @@
    GSAP COMPAT
 ═══════════════════════════════════════════ */
 .gsap-animate-in { opacity:1; }
+
+/* ═══════════════════════════════════════════
+   LOGO BLEND MODE
+   Light mode: multiply = white bg becomes transparent over light surface
+   Dark mode:  screen   = white bg becomes transparent over dark surface
+═══════════════════════════════════════════ */
+.livio-logo-img { mix-blend-mode: multiply; }
+.dark .livio-logo-img { mix-blend-mode: screen; }
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE OVERRIDES
+═══════════════════════════════════════════ */
+/* Prevent horizontal scroll on all viewports */
+html, body { max-width: 100%; overflow-x: hidden; }
+
+/* iOS PWA: use dynamic viewport units for full-height layouts */
+.h-dvh  { height: 100dvh; height: calc(var(--vh,1vh) * 100); }
+.min-h-dvh { min-height: 100dvh; min-height: calc(var(--vh,1vh) * 100); }
+
+/* Fluid type scale for small screens */
+@media (max-width: 380px) {
+  .text-2xl { font-size: 1.25rem; }
+  .text-3xl { font-size: 1.5rem;  }
+  .text-4xl { font-size: 1.75rem; }
+}
+
+/* Table horizontal scroll on small screens */
+@media (max-width: 640px) {
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+}
+
+/* iOS Safari: fix 100vh including address bar */
+@supports (-webkit-touch-callout: none) {
+  .h-\[100dvh\] {
+    height: -webkit-fill-available;
+  }
+}

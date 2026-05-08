@@ -7,6 +7,7 @@ import { useFinance } from '../../context/FinanceContext'
 import { getCurrencySymbol } from '../../utils/formatters'
 import { useQuickAdd } from '../../context/QuickAddContext'
 import { useTheme } from '../../context/ThemeContext'
+import Logo from '../common/Logo'
 
 function TopBar({ onMenuClick }) {
   const router = useRouter()
@@ -23,8 +24,6 @@ function TopBar({ onMenuClick }) {
   const [y, m] = (ledgerMonthKey || '').split('-').map(Number)
   const labelMonth = Number.isFinite(m) ? m - 1 : new Date().getMonth()
   const labelYear = Number.isFinite(y) ? y : new Date().getFullYear()
-
-  const initials = user?.email ? user.email[0].toUpperCase() : 'U'
 
   return (
     <header
@@ -105,19 +104,14 @@ function TopBar({ onMenuClick }) {
             <Plus className="w-4 h-4" />
           </button>
 
-          {/* Avatar → Settings */}
+          {/* Logo → Settings (mobile only; desktop sees sidebar logo) */}
           <button
             onClick={() => router.push('/dashboard/settings')}
-            className="flex items-center justify-center rounded-full transition-all hover:scale-105 active:scale-95"
+            className="flex items-center justify-center lg:hidden transition-opacity hover:opacity-70 active:scale-95"
             aria-label="Go to settings"
             title={user?.email || 'Settings'}
           >
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-full font-bold text-sm text-white"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)', boxShadow: '0 2px 8px rgba(99,102,241,0.35)' }}
-            >
-              {initials}
-            </div>
+            <Logo height={28} />
           </button>
         </div>
       </div>

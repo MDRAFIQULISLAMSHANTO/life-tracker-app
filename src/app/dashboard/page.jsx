@@ -1,10 +1,10 @@
 'use client'
 
-import { useMemo, useEffect, useRef, useState } from 'react'
+import { useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { Wallet, TrendingUp, TrendingDown, Percent, ArrowUpRight, ArrowDownRight, Eye, EyeOff } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, Percent } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import SummaryCard from '../../components/dashboard/SummaryCard'
 import TodayEvents from '../../components/dashboard/TodayEvents'
@@ -13,8 +13,8 @@ import QuickNotes from '../../components/dashboard/QuickNotes'
 import RecentActivity from '../../components/dashboard/RecentActivity'
 import { formatCurrency } from '../../utils/formatters'
 import { useFinance } from '../../context/FinanceContext'
-import { useQuickAdd } from '../../context/QuickAddContext'
 import { useDashboardToday } from '../../context/DashboardTodayContext'
+import WalletCard from '../../components/dashboard/WalletCard'
 import { useReminderNotifications } from '../../hooks/useReminderNotifications'
 
 const ExpenseDonutChart = dynamic(() => import('../../components/charts/ExpenseDonutChart'), {
@@ -51,7 +51,6 @@ function buildDailyTrend(ledgerMonthKey, transactions) {
 export default function DashboardPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const { openQuickAdd } = useQuickAdd()
   const {
     currency, ledgerMonthKey, transactionsInLedgerMonth,
     monthIncome, monthExpense, monthNet, totalBalance, accountBalances,
@@ -60,9 +59,6 @@ export default function DashboardPage() {
   const { reminders } = useDashboardToday()
   useReminderNotifications(reminders)
 
-  const [balanceVisible, setBalanceVisible] = useState(false)
-
-  const heroRef = useRef(null)
   const statsRef = useRef(null)
   const chartsRef = useRef(null)
 
@@ -70,9 +66,8 @@ export default function DashboardPage() {
     if (!user || loading) return
     import('gsap').then(({ gsap: g }) => {
       const tl = g.timeline({ defaults: { ease: 'power3.out' } })
-      if (heroRef.current) tl.fromTo(heroRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6 })
       if (statsRef.current?.children) {
-        tl.fromTo(Array.from(statsRef.current.children), { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.08 }, '-=0.3')
+        tl.fromTo(Array.from(statsRef.current.children), { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.08 })
       }
       if (chartsRef.current?.children) {
         tl.fromTo(Array.from(chartsRef.current.children), { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.1 }, '-=0.2')
@@ -89,7 +84,7 @@ export default function DashboardPage() {
     transactionsInLedgerMonth
       .filter((t) => t.type === 'income' || t.type === 'expense')
       .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 15)
+      .slice(0, 10)
       .map((t) => ({
         id: t.id, type: t.type,
         title: t.description || t.category || 'Transaction',
@@ -125,86 +120,14 @@ export default function DashboardPage() {
       {/* Row 1 — Hero + Stats */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
 
-        {/* Hero Balance Card */}
-        <div ref={heroRef} className="lg:col-span-1">
-          <div
-            className="hero-card relative overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #ec4899 100%)',
-              borderRadius: '1.5rem',
-              padding: '1.5rem',
-              minHeight: 200,
-              boxShadow: '0 8px 40px rgba(99,102,241,0.35), 0 2px 8px rgba(0,0,0,0.15)',
-            }}
-          >
-            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-20" style={{ background: 'rgba(255,255,255,0.3)' }} />
-            <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-10" style={{ background: 'rgba(255,255,255,0.3)' }} />
-
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs font-bold uppercase tracking-widest text-white/70">Total Balance</p>
-                <button
-                  type="button"
-                  onClick={() => setBalanceVisible((v) => !v)}
-                  className="flex items-center justify-center w-7 h-7 rounded-lg transition-opacity hover:opacity-70 active:scale-95"
-                  style={{ background: 'rgba(255,255,255,0.15)' }}
-                  aria-label={balanceVisible ? 'Hide balance' : 'Show balance'}
-                >
-                  {balanceVisible
-                    ? <EyeOff className="w-3.5 h-3.5 text-white/80" />
-                    : <Eye className="w-3.5 h-3.5 text-white/80" />
-                  }
-                </button>
-              </div>
-
-              {balanceVisible ? (
-                <p className="text-3xl sm:text-4xl font-extrabold text-white tabular-nums tracking-tight mb-1">
-                  {formatCurrency(totalBalance, currency)}
-                </p>
-              ) : (
-                <p className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-1 select-none">
-                  ••••••
-                </p>
-              )}
-              <p className="text-xs text-white/60 mb-4">{ledgerMonthKey} · tap eye to reveal</p>
-
-              {/* Account breakdown */}
-              <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scroll-touch" style={{ scrollbarWidth: 'none' }}>
-                {accountBalances.map((acc, i) => {
-                  const colors = [
-                    'linear-gradient(135deg,rgba(255,255,255,0.28),rgba(255,255,255,0.12))',
-                    'linear-gradient(135deg,rgba(16,185,129,0.5),rgba(5,150,105,0.3))',
-                    'linear-gradient(135deg,rgba(245,158,11,0.5),rgba(217,119,6,0.3))',
-                    'linear-gradient(135deg,rgba(236,72,153,0.5),rgba(219,39,119,0.3))',
-                    'linear-gradient(135deg,rgba(139,92,246,0.5),rgba(124,58,237,0.3))',
-                    'linear-gradient(135deg,rgba(6,182,212,0.5),rgba(8,145,178,0.3))',
-                  ]
-                  return (
-                    <div key={acc.id} className="flex-shrink-0 rounded-xl px-3 py-2.5 min-w-[110px]"
-                      style={{ background: colors[i % colors.length], backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                      <p className="text-[10px] font-bold text-white/70 uppercase tracking-wide truncate mb-0.5">{acc.name}</p>
-                      <p className="text-sm font-extrabold text-white tabular-nums">
-                        {balanceVisible ? formatCurrency(acc.balance, currency) : '••••'}
-                      </p>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Link href="/dashboard/income"
-                  className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all active:scale-95"
-                  style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(10px)' }}>
-                  <ArrowDownRight className="w-4 h-4" /> Income
-                </Link>
-                <Link href="/dashboard/expenses"
-                  className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all active:scale-95"
-                  style={{ background: 'rgba(0,0,0,0.25)' }}>
-                  <ArrowUpRight className="w-4 h-4" /> Expense
-                </Link>
-              </div>
-            </div>
-          </div>
+        {/* Wallet Balance Card */}
+        <div className="lg:col-span-1">
+          <WalletCard
+            accountBalances={accountBalances}
+            totalBalance={totalBalance}
+            currency={currency}
+            formatCurrency={formatCurrency}
+          />
         </div>
 
         {/* Stats Grid */}

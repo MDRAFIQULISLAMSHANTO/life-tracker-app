@@ -53,9 +53,12 @@ function normalizeFinancePayload(raw) {
       typeof raw.currency === 'string' && raw.currency.length >= 3 && raw.currency.length <= 4
         ? raw.currency.toUpperCase()
         : base.currency,
-    ledgerMonthKey: typeof raw.ledgerMonthKey === 'string' && /^\d{4}-\d{2}$/.test(raw.ledgerMonthKey)
-      ? raw.ledgerMonthKey
-      : base.ledgerMonthKey,
+    ledgerMonthKey: (() => {
+      const stored = typeof raw.ledgerMonthKey === 'string' && /^\d{4}-\d{2}$/.test(raw.ledgerMonthKey)
+        ? raw.ledgerMonthKey : base.ledgerMonthKey
+      const current = monthKeyFromDate(new Date())
+      return stored < current ? current : stored
+    })(),
     expenseCategories: Array.isArray(raw.expenseCategories) && raw.expenseCategories.length
       ? raw.expenseCategories
       : base.expenseCategories,
