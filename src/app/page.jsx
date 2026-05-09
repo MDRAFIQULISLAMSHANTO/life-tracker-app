@@ -7,6 +7,7 @@ import Navbar from '../components/landing/Navbar'
 import Hero from '../components/landing/Hero'
 import LandingValueSection from '../components/landing/LandingValueSection'
 import Footer from '../components/landing/Footer'
+import Logo from '../components/common/Logo'
 
 export default function LandingPage() {
   const { user, loading } = useAuth()
@@ -19,30 +20,46 @@ export default function LandingPage() {
   if (loading || user) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: '#f4f5f7' }}
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#f4f5f7',
+          flexDirection: 'column',
+          gap: 16,
+        }}
       >
-        <div className="flex flex-col items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-2xl animate-pulse"
-            style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
-          />
-          <p className="text-sm font-semibold" style={{ color: '#64748b' }}>Loading…</p>
+        <style>{`
+          @keyframes livio-rise {
+            from { opacity: 0; transform: translateY(10px) scale(0.96); }
+            to   { opacity: 1; transform: translateY(0)   scale(1); }
+          }
+          @keyframes livio-pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.45; }
+          }
+          .livio-preloader-logo {
+            animation: livio-rise 0.55s cubic-bezier(0.34,1.56,0.64,1) both;
+          }
+          .livio-preloader-dot {
+            animation: livio-pulse 1.4s ease-in-out infinite;
+          }
+        `}</style>
+        <div className="livio-preloader-logo">
+          <Logo height={48} />
         </div>
+        <div className="livio-preloader-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1' }} />
       </div>
     )
   }
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{ background: '#f4f5f7' }}
-    >
+    /* No overflow:hidden, no fixed height — body scrolls naturally */
+    <div style={{ background: '#f4f5f7' }}>
       <Navbar />
-      <main className="flex-1">
-        <Hero />
-        <LandingValueSection />
-      </main>
+      <Hero />
+      <LandingValueSection />
       <Footer />
     </div>
   )

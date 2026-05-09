@@ -35,6 +35,14 @@ function buildDailyTrendForMonth(ledgerMonthKey, transactions) {
   return rows
 }
 
+const cardStyle = {
+  background: 'var(--card-bg)',
+  border: '1px solid var(--card-border)',
+  borderRadius: 18,
+  padding: '20px 24px',
+  boxShadow: 'var(--card-shadow)',
+}
+
 export default function ReportsPage() {
   const { user, loading } = useAuth()
   const fileInputRef = useRef(null)
@@ -138,58 +146,105 @@ export default function ReportsPage() {
     setImportBusy(false)
   }
 
-  if (loading) return <div className="text-text-secondary">Loading...</div>
+  if (loading) return <div className="text-sm" style={{ color: 'var(--text-2)' }}>Loading…</div>
   if (!user) return null
 
   return (
     <div className="space-y-6 pb-24">
+      {/* Header + Excel panel */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Reports</h1>
-          <p className="text-gray-500 mt-2 text-sm sm:text-base font-medium">
-            Overview for <span className="font-semibold text-text-primary">{ledgerMonthKey}</span> (same month as the
-            header). Export to Excel or import rows using the template.
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>
+            Reports
+          </h1>
+          <p className="mt-2 text-sm sm:text-base font-medium" style={{ color: 'var(--text-2)' }}>
+            Overview for{' '}
+            <span className="font-semibold" style={{ color: 'var(--accent)' }}>{ledgerMonthKey}</span>
+            {' '}· Export to Excel or import rows using the template.
           </p>
         </div>
-        <details className="reports-excel-details w-full sm:w-auto sm:min-w-[280px] rounded-xl border border-gray-200 bg-white shadow-soft open:shadow-md">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 min-h-[44px] text-sm font-semibold text-text-primary [&::-webkit-details-marker]:hidden">
-            <span className="inline-flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4 shrink-0 text-primary" aria-hidden />
+
+        {/* Excel accordion */}
+        <details
+          className="w-full sm:w-auto sm:min-w-[280px]"
+          style={{
+            background: 'var(--card-bg)',
+            border: '1px solid var(--card-border)',
+            borderRadius: 16,
+            overflow: 'hidden',
+          }}
+        >
+          <summary
+            style={{
+              display: 'flex', cursor: 'pointer', listStyle: 'none',
+              alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              padding: '12px 16px', minHeight: 44,
+              fontSize: 14, fontWeight: 600, color: 'var(--text-1)',
+            }}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <FileSpreadsheet style={{ width: 16, height: 16, color: 'var(--accent)', flexShrink: 0 }} />
               Excel
             </span>
-            <ChevronDown className="reports-excel-chevron h-4 w-4 shrink-0 text-text-secondary transition-transform duration-200" aria-hidden />
+            <ChevronDown style={{ width: 16, height: 16, color: 'var(--text-3)', flexShrink: 0, transition: 'transform 0.2s' }} />
           </summary>
-          <div className="flex flex-col gap-2 border-t border-gray-100 p-3 sm:flex-row sm:flex-wrap">
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 8,
+            borderTop: '1px solid var(--card-border)',
+            padding: 12,
+          }}
+            className="sm:flex-row sm:flex-wrap"
+          >
             <button
               type="button"
               onClick={downloadImportTemplate}
-              className="inline-flex flex-1 items-center justify-center gap-2 px-4 py-3 min-h-[44px] rounded-xl border border-gray-300 bg-white font-semibold text-text-primary hover:bg-gray-50 text-sm sm:min-w-0"
+              style={{
+                flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                gap: 8, padding: '10px 16px', minHeight: 44, borderRadius: 12,
+                border: '1px solid var(--card-border)',
+                background: 'var(--input-bg)',
+                color: 'var(--text-1)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
             >
-              <FileSpreadsheet className="w-4 h-4 shrink-0" />
+              <FileSpreadsheet style={{ width: 16, height: 16, flexShrink: 0 }} />
               Template
             </button>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={importBusy}
-              className="inline-flex flex-1 items-center justify-center gap-2 px-4 py-3 min-h-[44px] rounded-xl border border-primary bg-primary/5 text-primary font-semibold hover:bg-primary/10 text-sm disabled:opacity-50 sm:min-w-0"
+              style={{
+                flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                gap: 8, padding: '10px 16px', minHeight: 44, borderRadius: 12,
+                border: '1px solid var(--accent)',
+                background: 'rgba(var(--accent-rgb),0.08)',
+                color: 'var(--accent)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'inherit', opacity: importBusy ? 0.5 : 1,
+              }}
             >
-              <Upload className="w-4 h-4 shrink-0" />
+              <Upload style={{ width: 16, height: 16, flexShrink: 0 }} />
               {importBusy ? 'Importing…' : 'Import'}
             </button>
             <input
               ref={fileInputRef}
               type="file"
               accept=".xlsx,.xls"
-              className="hidden"
+              style={{ display: 'none' }}
               onChange={handleImportFile}
             />
             <button
               type="button"
               onClick={handleExportExcel}
-              className="inline-flex flex-1 items-center justify-center gap-2 px-4 py-3 min-h-[44px] rounded-xl bg-primary text-white font-semibold hover:bg-primary-600 text-sm shadow-sm sm:min-w-0"
+              style={{
+                flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                gap: 8, padding: '10px 16px', minHeight: 44, borderRadius: 12, border: 'none',
+                background: 'var(--accent)',
+                color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
             >
-              <Download className="w-4 h-4 shrink-0" />
+              <Download style={{ width: 16, height: 16, flexShrink: 0 }} />
               Export
             </button>
           </div>
@@ -197,51 +252,44 @@ export default function ReportsPage() {
       </div>
 
       {importMsg && (
-        <div className="text-sm rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-text-primary">{importMsg}</div>
+        <div style={{
+          fontSize: 13, borderRadius: 12,
+          border: '1px solid var(--card-border)',
+          background: 'var(--input-bg)',
+          padding: '12px 16px',
+          color: 'var(--text-1)',
+        }}>{importMsg}</div>
       )}
 
-      <p className="text-xs text-text-secondary -mt-2">
-        Import: use the <strong>Transactions</strong> sheet; row 1 headers must be Date, Type, Amount, Category,
-        Description, AccountId, SourceLoanId (same as export). Types: <code className="text-xs">income</code>,{' '}
-        <code className="text-xs">expense</code>, <code className="text-xs">loan</code>.
+      <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: -8 }}>
+        Import: use the <strong style={{ color: 'var(--text-2)' }}>Transactions</strong> sheet; row 1 headers must be Date, Type, Amount, Category,
+        Description, AccountId, SourceLoanId. Types:{' '}
+        <code style={{ fontSize: 11, background: 'var(--input-bg)', padding: '1px 5px', borderRadius: 4 }}>income</code>,{' '}
+        <code style={{ fontSize: 11, background: 'var(--input-bg)', padding: '1px 5px', borderRadius: 4 }}>expense</code>,{' '}
+        <code style={{ fontSize: 11, background: 'var(--input-bg)', padding: '1px 5px', borderRadius: 4 }}>loan</code>.
       </p>
 
+      {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-background-card rounded-2xl p-5 sm:p-6 shadow-soft">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-text-secondary">Income</div>
-            <TrendingUp className="w-5 h-5 text-success" />
+        {[
+          { label: 'Income', value: totals.income, Icon: TrendingUp, color: 'var(--success)' },
+          { label: 'Expense', value: totals.expense, Icon: TrendingDown, color: 'var(--danger)' },
+          { label: 'Loans', value: totals.loans, Icon: BarChart3, color: 'var(--accent)' },
+          { label: 'Net (Income − Expense)', value: totals.net, Icon: null, color: totals.net >= 0 ? 'var(--success)' : 'var(--danger)' },
+        ].map(({ label, value, Icon, color }) => (
+          <div key={label} style={cardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>{label}</span>
+              {Icon && <Icon style={{ width: 18, height: 18, color }} />}
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-1)', wordBreak: 'break-word', letterSpacing: '-0.02em' }}>
+              {formatCurrency(value, currency)}
+            </div>
           </div>
-          <div className="text-xl sm:text-2xl font-extrabold text-text-primary mt-2 break-words">
-            {formatCurrency(totals.income, currency)}
-          </div>
-        </div>
-        <div className="bg-background-card rounded-2xl p-5 sm:p-6 shadow-soft">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-text-secondary">Expense</div>
-            <TrendingDown className="w-5 h-5 text-danger" />
-          </div>
-          <div className="text-xl sm:text-2xl font-extrabold text-danger mt-2 break-words">
-            {formatCurrency(totals.expense, currency)}
-          </div>
-        </div>
-        <div className="bg-background-card rounded-2xl p-5 sm:p-6 shadow-soft">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-text-secondary">Loans (not income)</div>
-            <BarChart3 className="w-5 h-5 text-primary" />
-          </div>
-          <div className="text-xl sm:text-2xl font-extrabold text-text-primary mt-2 break-words">
-            {formatCurrency(totals.loans, currency)}
-          </div>
-        </div>
-        <div className="bg-background-card rounded-2xl p-5 sm:p-6 shadow-soft">
-          <div className="text-sm text-text-secondary">Net (Income − Expense)</div>
-          <div className="text-xl sm:text-2xl font-extrabold text-text-primary mt-2 break-words">
-            {formatCurrency(totals.net, currency)}
-          </div>
-        </div>
+        ))}
       </div>
 
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ExpenseDonutChart data={expenseByCategory} />
         <DailyTrendChart data={trendMonth} />

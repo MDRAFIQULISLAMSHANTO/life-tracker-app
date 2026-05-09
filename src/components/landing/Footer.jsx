@@ -54,7 +54,7 @@ export default function Footer() {
             <p>© {new Date().getFullYear()} Livio — All rights reserved</p>
             <p>
               Designed &amp; built by{' '}
-              <a href="https://rishanto.com" target="_blank" rel="noopener noreferrer"
+              <a href="https://www.rishanto.com" target="_blank" rel="noopener noreferrer"
                 className="font-bold transition-opacity hover:opacity-70" style={{ color: '#6366f1' }}>
                 Rishanto
               </a>

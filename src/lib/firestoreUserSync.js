@@ -22,23 +22,49 @@ export function subscribeUserPayloadDoc({ userId, pathSegments, onRemote, onErro
   const docRef = userDocRef(userId, ...pathSegments)
   if (!docRef) return () => {}
 
-  return onSnapshot(
-    docRef,
-    { includeMetadataChanges: true },
-    (snap) => {
-      if (snap.metadata.hasPendingWrites) return
-      if (!snap.exists()) {
-        onRemote({ exists: false })
-        return
+  let active = true
+  let retryTimer = null
+  let currentUnsub = null
+
+  const RETRY_DELAYS = [3000, 8000, 20000] // 3s, 8s, 20s
+  let retryCount = 0
+
+  function attach() {
+    currentUnsub = onSnapshot(
+      docRef,
+      { includeMetadataChanges: true },
+      (snap) => {
+        retryCount = 0 // reset backoff on successful snapshot
+        if (snap.metadata.hasPendingWrites) return
+        if (!snap.exists()) {
+          onRemote({ exists: false })
+          return
+        }
+        const data = snap.data()
+        onRemote({ exists: true, payload: data?.payload ?? null })
+      },
+      (err) => {
+        console.warn('[Firestore sync] connection error, will retry:', err?.message || err)
+        onError?.(err)
+        if (!active) return
+        const delay = RETRY_DELAYS[Math.min(retryCount, RETRY_DELAYS.length - 1)]
+        retryCount++
+        retryTimer = setTimeout(() => {
+          if (!active) return
+          currentUnsub?.()
+          attach()
+        }, delay)
       }
-      const data = snap.data()
-      onRemote({ exists: true, payload: data?.payload ?? null })
-    },
-    (err) => {
-      console.warn('[Firestore sync]', err?.message || err)
-      onError?.(err)
-    }
-  )
+    )
+  }
+
+  attach()
+
+  return () => {
+    active = false
+    clearTimeout(retryTimer)
+    currentUnsub?.()
+  }
 }
 
 export function writeUserPayloadDoc(userId, pathSegments, payload) {

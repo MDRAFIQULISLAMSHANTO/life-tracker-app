@@ -18,15 +18,28 @@ export default function ContactPage() {
         </div>
 
         <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center shadow-sm sm:p-12">
-          <p className="text-text-secondary mb-8">
-            Send us an email and we'll get back to you as soon as possible.
+          <p className="text-neutral-500 mb-6 text-sm sm:text-base">
+            Send an email and I&apos;ll get back to you as soon as possible.
           </p>
           <a
-            href="mailto:hello@rishanto.com"
-            className="inline-flex items-center px-8 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-600 transition-colors"
+            href="mailto:rishanto.001@gmail.com"
+            className="inline-flex items-center px-8 py-3 rounded-xl font-semibold text-white text-sm transition-opacity hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
           >
-            Contact Us
+            rishanto.001@gmail.com
           </a>
+          <p className="mt-6 text-xs text-neutral-400">
+            Or visit{' '}
+            <a
+              href="https://www.rishanto.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold transition-opacity hover:opacity-70"
+              style={{ color: '#6366f1' }}
+            >
+              www.rishanto.com
+            </a>
+          </p>
         </div>
       </main>
       <Footer />

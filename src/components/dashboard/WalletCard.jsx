@@ -101,6 +101,28 @@ export const LEATHER_THEMES = [
     btnBg: 'rgba(255,255,255,0.10)', btnBorder: 'rgba(255,255,255,0.18)',
     badgeBg: 'rgba(255,255,255,0.16)', dotBg: '#507040',
   },
+  {
+    id: 'black',     name: 'Black Shade',
+    svgFill: '#181818',
+    leatherBg: 'linear-gradient(155deg,#2a2a2a 0%,#181818 40%,#222222 70%,#101010 100%)',
+    glassTint: 'rgba(0,0,0,0.40)',
+    swatch: 'linear-gradient(135deg,#2a2a2a,#101010)',
+    shadow: '0 22px 55px rgba(0,0,0,0.75)',
+    textColor: '#fff', subColor: 'rgba(255,255,255,0.48)',
+    btnBg: 'rgba(255,255,255,0.09)', btnBorder: 'rgba(255,255,255,0.16)',
+    badgeBg: 'rgba(255,255,255,0.12)', dotBg: '#404040',
+  },
+  {
+    id: 'charcoal',  name: 'Charcoal',
+    svgFill: '#2e2e3c',
+    leatherBg: 'linear-gradient(155deg,#3c3c50 0%,#282838 40%,#343448 70%,#1e1e2c 100%)',
+    glassTint: 'rgba(8,8,20,0.34)',
+    swatch: 'linear-gradient(135deg,#3c3c50,#1e1e2c)',
+    shadow: '0 22px 55px rgba(8,8,28,0.68)',
+    textColor: '#fff', subColor: 'rgba(210,210,255,0.52)',
+    btnBg: 'rgba(255,255,255,0.09)', btnBorder: 'rgba(255,255,255,0.15)',
+    badgeBg: 'rgba(255,255,255,0.12)', dotBg: '#585870',
+  },
 ]
 
 const STORAGE_KEY = 'livio_wallet_theme'
@@ -183,10 +205,10 @@ export default function WalletCard({ accountBalances, totalBalance, currency, fo
   return (
     <div
       style={{
-        position: 'relative', userSelect: 'none', cursor: n > 0 ? 'pointer' : 'default',
+        position: 'relative', userSelect: 'none',
         fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif',
+        paddingTop: 10,
       }}
-      onClick={handleToggle}
     >
       {/* Drop shadow */}
       <div style={{
@@ -318,8 +340,8 @@ export default function WalletCard({ accountBalances, totalBalance, currency, fo
               pointerEvents: 'none',
             }} />
 
-            {/* Controls row — settings only, eye button removed */}
-            <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: 2 }}>
+            {/* Controls row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
               <Link href="/dashboard/settings" style={{
                 width: 32, height: 32, borderRadius: '50%',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -331,6 +353,34 @@ export default function WalletCard({ accountBalances, totalBalance, currency, fo
                     stroke={tc} strokeWidth={1.5} strokeLinecap="round" />
                 </svg>
               </Link>
+              {/* Eye button — reveals/hides account cards + balance */}
+              {n > 0 && (
+                <button
+                  onClick={handleToggle}
+                  style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: revealed ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.10)',
+                    border: `1px solid ${revealed ? 'rgba(255,255,255,0.40)' : 'rgba(255,255,255,0.22)'}`,
+                    color: tc, cursor: 'pointer', flexShrink: 0,
+                    transition: 'background 0.2s, border 0.2s',
+                  }}
+                  aria-label={revealed ? 'Hide cards' : 'Show cards'}
+                >
+                  {revealed ? (
+                    <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
+                      <path d="M7 3C4 3 1.5 7 1.5 7s2.5 4 5.5 4 5.5-4 5.5-4-2.5-4-5.5-4z" stroke={tc} strokeWidth={1.4} />
+                      <circle cx="7" cy="7" r="1.6" fill={tc} />
+                      <path d="M2 2L12 12" stroke={tc} strokeWidth={1.4} strokeLinecap="round" />
+                    </svg>
+                  ) : (
+                    <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
+                      <path d="M7 3C4 3 1.5 7 1.5 7s2.5 4 5.5 4 5.5-4 5.5-4-2.5-4-5.5-4z" stroke={tc} strokeWidth={1.4} />
+                      <circle cx="7" cy="7" r="1.6" fill={tc} />
+                    </svg>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Balance */}

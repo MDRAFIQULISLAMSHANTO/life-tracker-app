@@ -36,65 +36,60 @@ export default function Navbar() {
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14 sm:h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center group">
-            <Logo height={40} />
+          <Link href="/" className="flex items-center">
+            <Logo height={38} />
           </Link>
 
-          {/* Desktop links */}
           <div className="hidden md:flex items-center gap-8">
             {NAV_LINKS.map(({ href, label }) => (
               <Link key={href} href={href}
-                className="text-sm font-semibold transition-colors hover:opacity-70"
+                className="text-sm font-semibold transition-opacity hover:opacity-70"
                 style={{ color: '#64748b' }}>
                 {label}
               </Link>
             ))}
           </div>
 
-          {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
             <button type="button" onClick={() => router.push('/login')}
-              className="text-sm font-bold px-4 py-2 rounded-xl transition-all hover:opacity-70"
-              style={{ color: '#64748b' }}>
+              className="text-sm font-bold px-4 py-2 rounded-xl transition-opacity hover:opacity-70"
+              style={{ color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
               Sign in
             </button>
             <button type="button" onClick={() => router.push('/signup')}
-              className="flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-xl text-white shadow-md transition-all hover:opacity-90 hover:-translate-y-0.5"
-              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', boxShadow: '0 4px 14px rgba(99,102,241,0.35)' }}>
+              className="flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-xl text-white transition-all hover:opacity-90 hover:-translate-y-0.5"
+              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', boxShadow: '0 4px 14px rgba(99,102,241,0.35)', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
               <Zap className="w-3.5 h-3.5" />
               Get started
             </button>
           </div>
 
-          {/* Mobile menu btn */}
           <button type="button" onClick={() => setMenuOpen(!menuOpen)}
             className="md:hidden p-2 rounded-xl transition-colors"
-            style={{ background: 'rgba(0,0,0,0.04)', color: '#0f0f1a' }}>
+            style={{ background: 'rgba(0,0,0,0.04)', color: '#0f0f1a', border: 'none', cursor: 'pointer' }}>
             {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden px-4 pb-4 pt-2 space-y-1" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
           {NAV_LINKS.map(({ href, label }) => (
             <Link key={href} href={href} onClick={() => setMenuOpen(false)}
-              className="block py-2.5 text-sm font-semibold rounded-xl px-3 transition-colors hover:bg-black/4"
+              className="block py-2.5 text-sm font-semibold rounded-xl px-3"
               style={{ color: '#0f0f1a' }}>
               {label}
             </Link>
           ))}
-          <div className="pt-3 space-y-2" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+          <div className="pt-3 space-y-2" style={{ borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: 8 }}>
             <button type="button" onClick={() => { setMenuOpen(false); router.push('/login') }}
               className="w-full py-2.5 text-sm font-bold rounded-xl text-left px-3"
-              style={{ color: '#64748b' }}>
+              style={{ color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
               Sign in
             </button>
             <button type="button" onClick={() => { setMenuOpen(false); router.push('/signup') }}
               className="w-full py-3 text-sm font-bold rounded-xl text-white"
-              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
               Get started free
             </button>
           </div>

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Plus, TrendingDown, TrendingUp, ArrowLeftRight, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useFinance } from '../../context/FinanceContext'
+import { formatCurrency } from '../../utils/formatters'
 
 // Base field style — full width, consistent height, custom border
 const F = {
@@ -98,19 +99,21 @@ function SubmitBtn({ color, shadow, children }) {
 }
 
 function IncomeForm({ onClose }) {
-  const { incomeCategories, accounts, addTransaction } = useFinance()
+  const { incomeCategories, accounts, addTransaction, currency } = useFinance()
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState(incomeCategories[0] || 'Other')
   const [description, setDescription] = useState('')
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [accountId, setAccountId] = useState(accounts[0]?.id || '')
   const [error, setError] = useState('')
+  const [toast, setToast] = useState('')
 
   const submit = (e) => {
     e.preventDefault(); setError('')
     const r = addTransaction({ type: 'income', amount, category, description, date, accountId })
     if (!r.ok) { setError(r.error || 'Failed'); return }
-    onClose()
+    setToast(`${formatCurrency(Number(amount), currency)} · ${category}`)
+    setTimeout(onClose, 1300)
   }
 
   return (
@@ -127,9 +130,12 @@ function IncomeForm({ onClose }) {
             {(incomeCategories.length ? incomeCategories : ['Other']).map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
+      </div>
+      <div style={grid2}>
         <div>
           <label style={L}>Date</label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...F, appearance: 'auto', WebkitAppearance: 'auto' }} />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            style={{ ...F, appearance: 'auto', WebkitAppearance: 'auto', minWidth: 0 }} />
         </div>
         <div>
           <label style={L}>Account</label>
@@ -144,25 +150,32 @@ function IncomeForm({ onClose }) {
           placeholder="Add a note…" rows={2} style={TA} />
       </div>
       {error && <p style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, margin: 0 }}>{error}</p>}
-      <SubmitBtn color="#16a34a" shadow="0 4px 16px rgba(22,163,74,0.28)">Add Income</SubmitBtn>
+      {toast
+        ? <div style={{ background: '#16a34a', color: '#fff', borderRadius: 14, padding: '13px 16px', fontSize: 14, fontWeight: 700, textAlign: 'center', letterSpacing: '-0.01em' }}>
+            Income added — {toast}
+          </div>
+        : <SubmitBtn color="#16a34a" shadow="0 4px 16px rgba(22,163,74,0.28)">Add Income</SubmitBtn>
+      }
     </form>
   )
 }
 
 function ExpenseForm({ onClose }) {
-  const { expenseCategories, accounts, addTransaction } = useFinance()
+  const { expenseCategories, accounts, addTransaction, currency } = useFinance()
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState(expenseCategories[0] || 'Other')
   const [description, setDescription] = useState('')
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [accountId, setAccountId] = useState(accounts[0]?.id || '')
   const [error, setError] = useState('')
+  const [toast, setToast] = useState('')
 
   const submit = (e) => {
     e.preventDefault(); setError('')
     const r = addTransaction({ type: 'expense', amount, category, description, date, accountId })
     if (!r.ok) { setError(r.error || 'Failed'); return }
-    onClose()
+    setToast(`${formatCurrency(Number(amount), currency)} · ${category}`)
+    setTimeout(onClose, 1300)
   }
 
   return (
@@ -179,9 +192,12 @@ function ExpenseForm({ onClose }) {
             {(expenseCategories.length ? expenseCategories : ['Other']).map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
+      </div>
+      <div style={grid2}>
         <div>
           <label style={L}>Date</label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...F, appearance: 'auto', WebkitAppearance: 'auto' }} />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            style={{ ...F, appearance: 'auto', WebkitAppearance: 'auto', minWidth: 0 }} />
         </div>
         <div>
           <label style={L}>Account</label>
@@ -196,7 +212,12 @@ function ExpenseForm({ onClose }) {
           placeholder="Add a note…" rows={2} style={TA} />
       </div>
       {error && <p style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, margin: 0 }}>{error}</p>}
-      <SubmitBtn color="#dc2626" shadow="0 4px 16px rgba(220,38,38,0.28)">Add Expense</SubmitBtn>
+      {toast
+        ? <div style={{ background: '#dc2626', color: '#fff', borderRadius: 14, padding: '13px 16px', fontSize: 14, fontWeight: 700, textAlign: 'center', letterSpacing: '-0.01em' }}>
+            Expense added — {toast}
+          </div>
+        : <SubmitBtn color="#dc2626" shadow="0 4px 16px rgba(220,38,38,0.28)">Add Expense</SubmitBtn>
+      }
     </form>
   )
 }
