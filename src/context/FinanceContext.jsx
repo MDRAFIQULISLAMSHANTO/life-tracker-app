@@ -102,6 +102,7 @@ export function FinanceProvider({ children }) {
   const stateRef = useRef(state)
   const applyingRemoteRef = useRef(false)
   const seededCloudRef = useRef(false)
+  const remoteReadyRef = useRef(false)
   const writeTimerRef = useRef(null)
 
   useEffect(() => {
@@ -118,6 +119,7 @@ export function FinanceProvider({ children }) {
 
   useEffect(() => {
     seededCloudRef.current = false
+    remoteReadyRef.current = false
   }, [user?.uid])
 
   useEffect(() => {
@@ -127,20 +129,17 @@ export function FinanceProvider({ children }) {
       pathSegments: FS_PATH,
       onRemote: ({ exists, payload }) => {
         if (!exists) {
+          remoteReadyRef.current = true
           if (!seededCloudRef.current) {
             seededCloudRef.current = true
             writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
           }
           return
         }
+        remoteReadyRef.current = true
         if (payload && typeof payload === 'object') {
           applyingRemoteRef.current = true
-          let next = normalizeFinancePayload(payload)
-          const demoKey = DEMO_FINANCE_KEY(user?.uid)
-          if (typeof window !== 'undefined' && !localStorage.getItem(demoKey) && !next.transactions?.length) {
-            next = mergeOneTimeDemoFinance(next)
-            localStorage.setItem(demoKey, '1')
-          }
+          const next = normalizeFinancePayload(payload)
           setState(next)
         }
       },
@@ -148,18 +147,6 @@ export function FinanceProvider({ children }) {
     return unsub
   }, [user?.uid])
 
-  /* Logged-out: one-time demo into localStorage when ledger is still empty */
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (user?.uid) return
-    const demoKey = DEMO_FINANCE_KEY(null)
-    if (localStorage.getItem(demoKey)) return
-    setState((prev) => {
-      if (prev.transactions?.length) return prev
-      localStorage.setItem(demoKey, '1')
-      return mergeOneTimeDemoFinance(prev)
-    })
-  }, [user?.uid])
 
   useEffect(() => {
     if (!user?.uid) return
@@ -167,6 +154,9 @@ export function FinanceProvider({ children }) {
       applyingRemoteRef.current = false
       return
     }
+    // Don't write until Firestore has confirmed the doc state (exists or not)
+    // — prevents overwriting real data with empty localStorage on login
+    if (!remoteReadyRef.current) return
     if (writeTimerRef.current) clearTimeout(writeTimerRef.current)
     writeTimerRef.current = setTimeout(() => {
       writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
@@ -493,9 +483,15 @@ export function FinanceProvider({ children }) {
       return { ok: true }
     }
 
-    /** Full app data wipe except categories & accounts structure — no demo */
+    /** Full app data wipe — resets to completely empty state */
     const resetAllFinanceToEmpty = () => {
       setState(emptyFinance())
+      return { ok: true }
+    }
+
+    /** Load demo data into current state (merges sample transactions/loans) */
+    const loadDemoData = () => {
+      setState((prev) => mergeOneTimeDemoFinance(prev))
       return { ok: true }
     }
 
@@ -537,6 +533,7 @@ export function FinanceProvider({ children }) {
       deleteLoan,
       resetFinanceDataForMonth,
       resetAllFinanceToEmpty,
+      loadDemoData,
     }
   }, [state])
 

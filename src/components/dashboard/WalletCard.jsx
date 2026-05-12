@@ -282,26 +282,6 @@ export default function WalletCard({ accountBalances, totalBalance, currency, fo
           <path d="M10,28.5 Q200,-3 390,28.5"
             fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth={1} />
 
-          {/* Pull-tab: centered on arch apex — tap hint */}
-          {n > 0 && (
-            <g transform="translate(200,10)">
-              <rect x="-22" y="-10" width="44" height="22" rx="11"
-                fill="rgba(255,255,255,0.10)"
-                stroke="rgba(255,255,255,0.18)" strokeWidth="0.8" />
-              {/* Chevron — up = cards hidden (pull out), down = cards shown (push in) */}
-              <path
-                d={revealed
-                  ? 'M-6,2 L0,-3 L6,2'    // ↑ push back in
-                  : 'M-6,-3 L0,2 L6,-3'   // ↓ pull out
-                }
-                fill="none"
-                stroke="rgba(255,255,255,0.55)"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </g>
-          )}
         </svg>
 
         {/* Leather texture fill */}

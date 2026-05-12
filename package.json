@@ -11,6 +11,8 @@
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\""
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.95.2",
+    "@google/generative-ai": "^0.24.1",
     "currency-codes": "^2.2.0",
     "firebase": "^12.7.0",
     "gsap": "^3.12.5",

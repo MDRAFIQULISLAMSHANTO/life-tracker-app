@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from '../../components/layout/Sidebar'
 import TopBar from '../../components/layout/TopBar'
 import MobileTabBar from '../../components/layout/MobileTabBar'
+import AiAdvisor from '../../components/chat/AiAdvisor'
 import { DashboardTodayProvider } from '../../context/DashboardTodayContext'
 import { QuickAddProvider } from '../../context/QuickAddContext'
 
@@ -32,6 +33,7 @@ export default function DashboardLayout({ children }) {
             </main>
           </div>
           <MobileTabBar />
+          <AiAdvisor />
         </div>
       </QuickAddProvider>
     </DashboardTodayProvider>

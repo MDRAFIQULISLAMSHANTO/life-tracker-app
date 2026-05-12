@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { User, Wallet, RotateCcw, CalendarRange, Settings2, Smartphone, Download, CheckCircle2, CreditCard, Bell, LogOut, Palette } from 'lucide-react'
+import { User, Wallet, RotateCcw, CalendarRange, Settings2, Smartphone, Download, CheckCircle2, CreditCard, Bell, LogOut, Palette, Database, FlaskConical, AlertTriangle } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useFinance } from '../../../context/FinanceContext'
@@ -118,7 +118,7 @@ function LogoutButton() {
 
 export default function SettingsPage() {
   const { user, loading } = useAuth()
-  const { currency, setCurrency, accounts, addAccount, renameAccount, deleteAccount, updateAccountBalance, expenseCategories, incomeCategories, otherCategories, addCategory, removeCategory, resetFinanceDataForMonth } = useFinance()
+  const { currency, setCurrency, accounts, addAccount, renameAccount, deleteAccount, updateAccountBalance, expenseCategories, incomeCategories, otherCategories, addCategory, removeCategory, resetFinanceDataForMonth, resetAllFinanceToEmpty, loadDemoData } = useFinance()
   const { resetDashboardForMonth } = useDashboardToday()
 
   const [walletTheme, setWalletTheme] = useState(3)
@@ -128,6 +128,9 @@ export default function SettingsPage() {
   const [resetYear, setResetYear] = useState(new Date().getFullYear())
   const [resetMonth, setResetMonth] = useState(new Date().getMonth() + 1)
   const [confirmText, setConfirmText] = useState('')
+  const [dbResetOpen, setDbResetOpen] = useState(false)
+  const [dbResetConfirm, setDbResetConfirm] = useState('')
+  const [demoConfirmOpen, setDemoConfirmOpen] = useState(false)
 
   const optionsForSelect = useMemo(() => {
     const q = currencyFilter.trim().toLowerCase()
@@ -341,6 +344,39 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* Database */}
+        <section className={sectionClass} style={{ borderTop: '1px solid var(--card-border)' }}>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(var(--accent-rgb),0.1)' }}>
+              <Database className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-extrabold" style={{ color: 'var(--text-1)' }}>Database</h2>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-2)' }}>Reset all data or load sample demo entries</p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={() => { setDemoConfirmOpen(true) }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-opacity hover:opacity-80"
+              style={{ background: 'rgba(var(--accent-rgb),0.10)', color: 'var(--accent)', border: '1px solid rgba(var(--accent-rgb),0.22)' }}
+            >
+              <FlaskConical className="w-4 h-4" />
+              Load demo data
+            </button>
+            <button
+              type="button"
+              onClick={() => { setDbResetOpen(true); setDbResetConfirm('') }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-opacity hover:opacity-80"
+              style={{ background: 'rgba(220,38,38,0.08)', color: 'var(--danger, #dc2626)', border: '1px solid rgba(220,38,38,0.20)' }}
+            >
+              <AlertTriangle className="w-4 h-4" />
+              Reset entire database
+            </button>
+          </div>
+        </section>
+
         {/* Logout — always at the very end */}
         <section className={sectionClass} style={{ borderTop: '1px solid var(--card-border)' }}>
           <div className="flex items-center gap-3 mb-4">
@@ -356,7 +392,7 @@ export default function SettingsPage() {
         </section>
       </div>
 
-      {/* Reset Modal */}
+      {/* Reset month Modal */}
       {resetOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <button type="button" className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Close" onClick={() => setResetOpen(false)} />
@@ -382,6 +418,86 @@ export default function SettingsPage() {
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
               <button type="button" onClick={() => setResetOpen(false)} className="px-4 py-2.5 rounded-xl font-bold text-sm min-h-[44px] transition-colors" style={{ border: '1px solid var(--card-border)', color: 'var(--text-1)' }}>Cancel</button>
               <button type="button" onClick={runReset} className="accent-btn px-4 py-2.5 text-sm min-h-[44px]">Erase data</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset entire database modal */}
+      {dbResetOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <button type="button" className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Close" onClick={() => setDbResetOpen(false)} />
+          <div className="relative w-full max-w-md rounded-3xl p-6 shadow-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--card-border)' }}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'rgba(220,38,38,0.1)' }}>
+                <AlertTriangle className="w-5 h-5" style={{ color: '#dc2626' }} />
+              </div>
+              <h3 className="text-lg font-extrabold" style={{ color: 'var(--text-1)' }}>Reset entire database</h3>
+            </div>
+            <p className="text-sm mb-5" style={{ color: 'var(--text-2)' }}>
+              This will permanently delete <strong>all</strong> your accounts, transactions, loans, budgets, and settings. This action cannot be undone.
+            </p>
+            <label className="block text-xs font-bold mb-1.5" style={{ color: 'var(--text-2)' }}>
+              Type <span className="font-mono px-1 py-0.5 rounded" style={{ color: '#dc2626', background: 'rgba(220,38,38,0.08)' }}>RESET ALL</span> to confirm
+            </label>
+            <input
+              value={dbResetConfirm}
+              onChange={(e) => setDbResetConfirm(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl mb-5 min-h-[44px] text-sm"
+              style={inputStyle}
+              placeholder="RESET ALL"
+              autoComplete="off"
+            />
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
+              <button type="button" onClick={() => setDbResetOpen(false)} className="px-4 py-2.5 rounded-xl font-bold text-sm min-h-[44px]" style={{ border: '1px solid var(--card-border)', color: 'var(--text-1)' }}>Cancel</button>
+              <button
+                type="button"
+                disabled={dbResetConfirm.trim().toUpperCase() !== 'RESET ALL'}
+                onClick={() => {
+                  resetAllFinanceToEmpty()
+                  setDbResetOpen(false)
+                  setDbResetConfirm('')
+                  setMsg('Database reset. All data cleared.')
+                  setTimeout(() => setMsg(''), 4000)
+                }}
+                className="px-4 py-2.5 rounded-xl font-bold text-sm min-h-[44px] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: '#dc2626', color: '#fff' }}
+              >
+                Erase everything
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Load demo data confirmation modal */}
+      {demoConfirmOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <button type="button" className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Close" onClick={() => setDemoConfirmOpen(false)} />
+          <div className="relative w-full max-w-md rounded-3xl p-6 shadow-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--card-border)' }}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'rgba(var(--accent-rgb),0.1)' }}>
+                <FlaskConical className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+              </div>
+              <h3 className="text-lg font-extrabold" style={{ color: 'var(--text-1)' }}>Load demo data</h3>
+            </div>
+            <p className="text-sm mb-6" style={{ color: 'var(--text-2)' }}>
+              This will add sample accounts, transactions, and loans to your database so you can explore all features. Your existing data will be merged — nothing is deleted.
+            </p>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
+              <button type="button" onClick={() => setDemoConfirmOpen(false)} className="px-4 py-2.5 rounded-xl font-bold text-sm min-h-[44px]" style={{ border: '1px solid var(--card-border)', color: 'var(--text-1)' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={() => {
+                  loadDemoData()
+                  setDemoConfirmOpen(false)
+                  setMsg('Demo data loaded successfully.')
+                  setTimeout(() => setMsg(''), 4000)
+                }}
+                className="accent-btn px-4 py-2.5 text-sm min-h-[44px]"
+              >
+                Load demo data
+              </button>
             </div>
           </div>
         </div>
