@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Sparkles, X, Send, AlertCircle, Loader2, ChevronDown } from 'lucide-react'
 import { useFinance } from '../../context/FinanceContext'
 import { formatCurrency } from '../../utils/formatters'
@@ -196,7 +197,9 @@ export default function AiAdvisor() {
     }
   }
 
-  return (
+  const portal = typeof document !== 'undefined' ? document.body : null
+
+  const floatingUI = (
     <>
       {/* Floating trigger button — left on mobile (FAB is right), right on desktop */}
       <button
@@ -340,4 +343,6 @@ export default function AiAdvisor() {
       )}
     </>
   )
+
+  return portal ? createPortal(floatingUI, portal) : null
 }
