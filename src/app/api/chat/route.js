@@ -3,6 +3,11 @@ const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GE
 
 export async function POST(req) {
   try {
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey || apiKey === 'your_gemini_api_key_here') {
+      return Response.json({ error: 'GEMINI_API_KEY not configured on server. Add it to Vercel environment variables.' }, { status: 500 })
+    }
+
     const { messages, financeContext } = await req.json()
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -46,7 +51,7 @@ Always relate your advice to the user's actual numbers when data is available. I
       },
     ]
 
-    const res = await fetch(`${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`, {
+    const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
