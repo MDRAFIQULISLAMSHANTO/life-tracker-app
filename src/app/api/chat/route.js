@@ -3,7 +3,7 @@ const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GE
 
 export async function POST(req) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY
+    const apiKey = process.env.GEMINI_API_KEY || process.env.Gemini_api_key
     if (!apiKey || apiKey === 'your_gemini_api_key_here') {
       return Response.json({ error: 'GEMINI_API_KEY not configured on server. Add it to Vercel environment variables.' }, { status: 500 })
     }
