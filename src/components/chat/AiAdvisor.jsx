@@ -204,11 +204,11 @@ export default function AiAdvisor() {
       {/* Floating trigger button — left on mobile (FAB is right), right on desktop */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="fixed z-40 flex items-center justify-center transition-all active:scale-95 left-5 lg:left-auto lg:right-5"
+        className="fixed z-40 flex items-center justify-center transition-all active:scale-95 left-4 lg:left-auto lg:right-5"
         style={{
-          bottom: 'max(env(safe-area-inset-bottom) + 1rem, 1.25rem)',
-          width: 46,
-          height: 46,
+          bottom: 'calc(max(env(safe-area-inset-bottom), 0.5rem) + 4.5rem)',
+          width: 42,
+          height: 42,
           borderRadius: 14,
           background: '#1a1a1f',
           border: '1px solid rgba(255,255,255,0.10)',
@@ -225,12 +225,13 @@ export default function AiAdvisor() {
       {/* Chat popup */}
       {open && (
         <div
-          className="fixed z-40 flex flex-col overflow-hidden shadow-2xl left-5 lg:left-auto lg:right-5"
+          className="fixed z-40 flex flex-col overflow-hidden shadow-2xl left-3 right-3 lg:left-auto lg:right-5"
           style={{
             bottom: 'calc(max(env(safe-area-inset-bottom) + 1rem, 1.25rem) + 56px)',
-            width: 'min(380px, calc(100vw - 2.5rem))',
-            height: 'min(520px, calc(100vh - 10rem))',
-            borderRadius: 24,
+            width: 'auto',
+            maxWidth: 380,
+            height: 'min(460px, calc(100vh - 12rem))',
+            borderRadius: 20,
             background: 'var(--surface)',
             border: '1px solid var(--card-border)',
           }}
