@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Plus, Menu, Sun, Moon, Cloud } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Menu, Sun, Moon, Cloud, LayoutDashboard } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useFinance } from '../../context/FinanceContext'
 import { getCurrencySymbol } from '../../utils/formatters'
@@ -84,6 +84,16 @@ function TopBar({ onMenuClick }) {
           >
             {getCurrencySymbol(currency)}
           </div>
+
+          {/* Dashboard button */}
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="flex items-center justify-center w-9 h-9 rounded-xl transition-all"
+            style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-2)' }}
+            aria-label="Go to dashboard"
+          >
+            <LayoutDashboard className="w-4 h-4" />
+          </button>
 
           {/* Theme toggle */}
           <button

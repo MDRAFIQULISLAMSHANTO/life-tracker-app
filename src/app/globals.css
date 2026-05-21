@@ -140,6 +140,17 @@
     outline: none;
     box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px rgba(var(--accent-rgb),0.2);
   }
+
+  /* Dark mode native select fix */
+  .dark select {
+    background-color: var(--input-bg);
+    color: var(--text-1);
+    color-scheme: dark;
+  }
+  .dark select option {
+    background-color: #1c2128;
+    color: #e6edf3;
+  }
 }
 
 /* ═══════════════════════════════════════════

@@ -204,9 +204,9 @@ export default function AiAdvisor() {
       {/* Floating trigger button — left on mobile (FAB is right), right on desktop */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="fixed z-40 flex items-center justify-center transition-all active:scale-95 left-4 lg:left-auto lg:right-5"
+        className="fixed z-[55] flex items-center justify-center transition-all active:scale-95 right-4 lg:right-5"
         style={{
-          bottom: 'calc(max(env(safe-area-inset-bottom), 0.5rem) + 4.5rem)',
+          bottom: 'calc(max(env(safe-area-inset-bottom), 0.5rem) + 5rem)',
           width: 42,
           height: 42,
           borderRadius: 14,
@@ -225,9 +225,9 @@ export default function AiAdvisor() {
       {/* Chat popup */}
       {open && (
         <div
-          className="fixed z-40 flex flex-col overflow-hidden shadow-2xl left-3 right-3 lg:left-auto lg:right-5"
+          className="fixed z-[55] flex flex-col overflow-hidden shadow-2xl left-3 right-3 lg:left-auto lg:right-5"
           style={{
-            bottom: 'calc(max(env(safe-area-inset-bottom) + 1rem, 1.25rem) + 56px)',
+            bottom: 'calc(max(env(safe-area-inset-bottom), 0.5rem) + 9rem)',
             width: 'auto',
             maxWidth: 380,
             height: 'min(460px, calc(100vh - 12rem))',
