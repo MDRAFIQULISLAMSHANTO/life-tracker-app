@@ -58,12 +58,42 @@ export function subscribeUserPayloadDoc({ userId, pathSegments, onRemote, onErro
     )
   }
 
+  // Mobile/PWA freezes the JS context while backgrounded; the Firestore realtime
+  // channel can die and then fail to redeliver remote changes after resume —
+  // which looks like "other devices' edits never reach the PWA". Re-attaching the
+  // listener on foreground forces a fresh server snapshot. Debounced so the
+  // visibilitychange + pageshow pair (and rapid toggles) don't thrash.
+  let reattachLock = false
+  function reattach() {
+    if (!active || reattachLock) return
+    reattachLock = true
+    setTimeout(() => { reattachLock = false }, 500)
+    clearTimeout(retryTimer)
+    retryCount = 0
+    currentUnsub?.()
+    attach()
+  }
+
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') reattach()
+  }
+  const onPageShow = () => reattach()
+
   attach()
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('pageshow', onPageShow)
+  }
 
   return () => {
     active = false
     clearTimeout(retryTimer)
     currentUnsub?.()
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('pageshow', onPageShow)
+    }
   }
 }
 

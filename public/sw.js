@@ -1,6 +1,6 @@
 // Livio Service Worker — notifications + PWA offline cache
 
-const CACHE = 'livio-v1'
+const CACHE = 'livio-v2'
 const OFFLINE_URLS = ['/', '/dashboard']
 
 self.addEventListener('install', (e) => {

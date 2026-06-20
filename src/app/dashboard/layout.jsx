@@ -22,7 +22,7 @@ export default function DashboardLayout({ children }) {
   return (
     <DashboardTodayProvider>
       <QuickAddProvider>
-        <div className="flex overflow-hidden bg-light-gradient dark:bg-dark-gradient" style={{ height: 'calc(var(--vh, 1vh) * 100)', minHeight: 0 }}>
+        <div className="app-shell-h flex overflow-hidden bg-light-gradient dark:bg-dark-gradient" style={{ minHeight: 0 }}>
           <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen((o) => !o)} />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <TopBar onMenuClick={() => setSidebarOpen((o) => !o)} />
