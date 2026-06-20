@@ -43,6 +43,90 @@ export function emptyFinance() {
   }
 }
 
+/** Normalize one loan, migrating legacy shape (addToIncome, no direction/repayments). */
+function normalizeLoan(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const direction = raw.direction === 'lent' ? 'lent' : 'borrowed'
+  const countInFinance =
+    typeof raw.countInFinance === 'boolean'
+      ? raw.countInFinance
+      : typeof raw.addToIncome === 'boolean'
+        ? raw.addToIncome // legacy field
+        : false
+  const repayments = Array.isArray(raw.repayments)
+    ? raw.repayments
+        .map((r) => ({
+          id: r?.id || safeId(),
+          amount: Math.max(0, Math.round(Number(r?.amount || 0) * 100) / 100),
+          date: r?.date ? String(r.date).slice(0, 10) : todayISODate(),
+          note: String(r?.note || '').trim(),
+        }))
+        .filter((r) => r.amount > 0)
+    : []
+  const borrowDate = raw.borrowDate ? String(raw.borrowDate).slice(0, 10) : todayISODate()
+  return {
+    id: raw.id || safeId(),
+    direction,
+    amount: Math.max(0, Math.round(Number(raw.amount || 0) * 100) / 100),
+    person: String(raw.person || '').trim(),
+    borrowDate,
+    extendedDate: raw.extendedDate ? String(raw.extendedDate).slice(0, 10) : borrowDate,
+    reason: String(raw.reason || '').trim(),
+    countInFinance,
+    repayments,
+  }
+}
+
+export function loanPaid(loan) {
+  return (loan.repayments || []).reduce((s, r) => s + Number(r.amount || 0), 0)
+}
+
+export function loanOutstanding(loan) {
+  return Math.round((Number(loan.amount || 0) - loanPaid(loan)) * 100) / 100
+}
+
+/**
+ * Rebuild the cash transactions linked to a loan (tagged sourceLoanId).
+ * borrowed: principal=income, repayment=expense. lent: principal=expense, repayment=income.
+ * Returns [] when countInFinance is off (pure tracking, no balance effect).
+ */
+function buildLoanTransactions(loan, accountId) {
+  if (!loan.countInFinance) return []
+  const personTo = loan.person ? ` to ${loan.person}` : ''
+  const personFrom = loan.person ? ` from ${loan.person}` : ''
+  const txs = [
+    {
+      id: safeId(),
+      type: loan.direction === 'borrowed' ? 'income' : 'expense',
+      amount: loan.amount,
+      category: 'Loans',
+      description:
+        `Loan ${loan.direction === 'borrowed' ? 'borrowed' : 'given'}` +
+        `${loan.direction === 'borrowed' ? personFrom : personTo}` +
+        `${loan.reason ? `: ${loan.reason}` : ''}`,
+      date: loan.borrowDate,
+      accountId,
+      sourceLoanId: loan.id,
+      loanLeg: 'principal',
+    },
+  ]
+  ;(loan.repayments || []).forEach((r) => {
+    txs.push({
+      id: safeId(),
+      type: loan.direction === 'borrowed' ? 'expense' : 'income',
+      amount: r.amount,
+      category: 'Loans',
+      description: `Loan repayment${loan.direction === 'borrowed' ? personTo : personFrom}${r.note ? `: ${r.note}` : ''}`,
+      date: r.date,
+      accountId,
+      sourceLoanId: loan.id,
+      loanLeg: 'repayment',
+      loanRepaymentId: r.id,
+    })
+  })
+  return txs
+}
+
 function normalizeFinancePayload(raw) {
   const base = emptyFinance()
   if (!raw || typeof raw !== 'object') return base
@@ -70,7 +154,7 @@ function normalizeFinancePayload(raw) {
       : base.otherCategories,
     accounts: Array.isArray(raw.accounts) && raw.accounts.length ? raw.accounts : base.accounts,
     transactions: Array.isArray(raw.transactions) ? raw.transactions : [],
-    loans: Array.isArray(raw.loans) ? raw.loans : [],
+    loans: Array.isArray(raw.loans) ? raw.loans.map(normalizeLoan).filter(Boolean) : [],
     budgetsByMonth: raw.budgetsByMonth && typeof raw.budgetsByMonth === 'object' ? raw.budgetsByMonth : {},
   }
 }
@@ -432,46 +516,72 @@ export function FinanceProvider({ children }) {
       }
     }
 
-    const upsertLoan = ({ id, amount, borrowDate, extendedDate, reason, addToIncome, person }) => {
+    const upsertLoan = ({ id, direction, amount, borrowDate, extendedDate, reason, countInFinance, person }) => {
       const num = Number(amount)
       if (!Number.isFinite(num) || num <= 0) return { ok: false, error: 'Amount must be > 0.' }
       const loanId = id || safeId()
-      const loanBase = {
-        id: loanId,
-        amount: Math.round(num * 100) / 100,
-        borrowDate: borrowDate ? String(borrowDate).slice(0, 10) : todayISODate(),
-        extendedDate: extendedDate ? String(extendedDate).slice(0, 10) : todayISODate(),
-        reason: String(reason || '').trim(),
-        person: String(person || '').trim(),
-        addToIncome: !!addToIncome,
-      }
       setState((prev) => {
         const existing = prev.loans.find((l) => l.id === loanId)
-        const loans = existing ? prev.loans.map((l) => (l.id === loanId ? loanBase : l)) : [loanBase, ...prev.loans]
-        const txType = loanBase.addToIncome ? 'income' : 'loan'
-        const category = 'Loans'
-        const personStr = loanBase.person ? ` from ${loanBase.person}` : ''
-        const desc = `Loan${personStr}${loanBase.reason ? `: ${loanBase.reason}` : ''}`
-        const linkedTxIndex = prev.transactions.findIndex((t) => t.sourceLoanId === loanId)
-        const linkedTx = {
-          id: linkedTxIndex >= 0 ? prev.transactions[linkedTxIndex].id : safeId(),
-          type: txType,
-          amount: loanBase.amount,
-          category,
-          description: desc,
-          date: loanBase.borrowDate,
-          accountId: prev.accounts[0]?.id ?? null,
-          sourceLoanId: loanId,
+        const loan = {
+          id: loanId,
+          direction: direction === 'lent' ? 'lent' : 'borrowed',
+          amount: Math.round(num * 100) / 100,
+          borrowDate: borrowDate ? String(borrowDate).slice(0, 10) : todayISODate(),
+          extendedDate: extendedDate ? String(extendedDate).slice(0, 10) : todayISODate(),
+          reason: String(reason || '').trim(),
+          person: String(person || '').trim(),
+          countInFinance: !!countInFinance,
+          repayments: existing?.repayments || [],
         }
-        let transactions = prev.transactions
-        if (linkedTxIndex >= 0) {
-          transactions = prev.transactions.map((t) => (t.sourceLoanId === loanId ? linkedTx : t))
-        } else {
-          transactions = [linkedTx, ...prev.transactions]
-        }
+        const loans = existing ? prev.loans.map((l) => (l.id === loanId ? loan : l)) : [loan, ...prev.loans]
+        const accountId = prev.accounts[0]?.id ?? null
+        const otherTx = prev.transactions.filter((t) => t.sourceLoanId !== loanId)
+        const transactions = [...buildLoanTransactions(loan, accountId), ...otherTx]
         return { ...prev, loans, transactions }
       })
-      return { ok: true, loan: loanBase }
+      return { ok: true }
+    }
+
+    const addRepayment = (loanId, { amount, date, note } = {}) => {
+      const num = Number(amount)
+      if (!Number.isFinite(num) || num <= 0) return { ok: false, error: 'Repayment must be > 0.' }
+      const loan = state.loans.find((l) => l.id === loanId)
+      if (!loan) return { ok: false, error: 'Loan not found.' }
+      const repAmt = Math.round(num * 100) / 100
+      const outstanding = loanOutstanding(loan)
+      if (outstanding <= 0) return { ok: false, error: 'This loan is already fully repaid.' }
+      if (repAmt > outstanding + 0.001) return { ok: false, error: `Repayment exceeds outstanding (${outstanding}).` }
+      setState((prev) => {
+        const target = prev.loans.find((l) => l.id === loanId)
+        if (!target) return prev
+        const rep = {
+          id: safeId(),
+          amount: repAmt,
+          date: date ? String(date).slice(0, 10) : todayISODate(),
+          note: String(note || '').trim(),
+        }
+        const newLoan = { ...target, repayments: [...(target.repayments || []), rep] }
+        const loans = prev.loans.map((l) => (l.id === loanId ? newLoan : l))
+        const accountId = prev.accounts[0]?.id ?? null
+        const otherTx = prev.transactions.filter((t) => t.sourceLoanId !== loanId)
+        const transactions = [...buildLoanTransactions(newLoan, accountId), ...otherTx]
+        return { ...prev, loans, transactions }
+      })
+      return { ok: true }
+    }
+
+    const deleteRepayment = (loanId, repaymentId) => {
+      setState((prev) => {
+        const target = prev.loans.find((l) => l.id === loanId)
+        if (!target) return prev
+        const newLoan = { ...target, repayments: (target.repayments || []).filter((r) => r.id !== repaymentId) }
+        const loans = prev.loans.map((l) => (l.id === loanId ? newLoan : l))
+        const accountId = prev.accounts[0]?.id ?? null
+        const otherTx = prev.transactions.filter((t) => t.sourceLoanId !== loanId)
+        const transactions = [...buildLoanTransactions(newLoan, accountId), ...otherTx]
+        return { ...prev, loans, transactions }
+      })
+      return { ok: true }
     }
 
     const deleteLoan = (loanId) => {
@@ -552,6 +662,8 @@ export function FinanceProvider({ children }) {
       deleteTransaction,
       importTransactionsFromRows,
       upsertLoan,
+      addRepayment,
+      deleteRepayment,
       deleteLoan,
       resetFinanceDataForMonth,
       resetAllFinanceToEmpty,

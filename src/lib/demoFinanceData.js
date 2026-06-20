@@ -114,28 +114,32 @@ export function mergeOneTimeDemoFinance(base) {
     },
   ]
 
-  const loanId = 'demo_fin_loan_1'
   const loans = [
     {
-      id: loanId,
+      id: 'demo_fin_loan_1',
+      direction: 'borrowed',
       amount: 150000,
+      person: 'Karim',
       borrowDate: dayInMonth(pm, 5),
       extendedDate: dayInMonth(mk, 5),
       reason: 'Personal loan (demo)',
-      addToIncome: false,
+      countInFinance: false,
+      repayments: [
+        { id: 'demo_fin_rep_1', amount: 50000, date: dayInMonth(mk, 2), note: 'First installment' },
+      ],
+    },
+    {
+      id: 'demo_fin_loan_2',
+      direction: 'lent',
+      amount: 20000,
+      person: 'Rahim',
+      borrowDate: dayInMonth(pm, 12),
+      extendedDate: dayInMonth(mk, 12),
+      reason: 'Lent to friend (demo)',
+      countInFinance: false,
+      repayments: [],
     },
   ]
-
-  const loanTx = {
-    id: 'demo_fin_tx_loan',
-    type: 'loan',
-    amount: 150000,
-    category: 'Loans',
-    description: 'Loan: Personal loan (demo)',
-    date: dayInMonth(pm, 5),
-    accountId: accBank,
-    sourceLoanId: loanId,
-  }
 
   const budgetsByMonth = {
     ...base.budgetsByMonth,
@@ -159,7 +163,7 @@ export function mergeOneTimeDemoFinance(base) {
     ...base,
     ledgerMonthKey: mk,
     accounts,
-    transactions: [...transactions, loanTx],
+    transactions: [...transactions],
     loans,
     budgetsByMonth,
   }

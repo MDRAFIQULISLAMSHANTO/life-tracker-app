@@ -24,12 +24,20 @@ function buildFinanceContext(state) {
     .slice(0, 5)
     .map(([cat, amt]) => ({ category: cat, amount: amt }))
 
-  const activeLoans = loans.filter((l) => !l.repaid).map((l) => ({
-    amount: l.amount,
-    reason: l.reason,
-    person: l.person,
-    borrowDate: l.borrowDate,
-  }))
+  const activeLoans = loans
+    .map((l) => {
+      const paid = (l.repayments || []).reduce((s, r) => s + Number(r.amount || 0), 0)
+      const outstanding = Math.round((Number(l.amount || 0) - paid) * 100) / 100
+      return {
+        direction: l.direction === 'lent' ? 'lent' : 'borrowed',
+        amount: l.amount,
+        outstanding,
+        reason: l.reason,
+        person: l.person,
+        borrowDate: l.borrowDate,
+      }
+    })
+    .filter((l) => l.outstanding > 0)
 
   return {
     currency,
