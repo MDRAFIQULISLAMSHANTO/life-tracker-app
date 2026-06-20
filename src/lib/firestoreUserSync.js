@@ -35,7 +35,11 @@ export function subscribeUserPayloadDoc({ userId, pathSegments, onRemote, onErro
       { includeMetadataChanges: true },
       (snap) => {
         retryCount = 0 // reset backoff on successful snapshot
-        if (snap.metadata.hasPendingWrites) return
+        const { hasPendingWrites, fromCache } = snap.metadata
+        console.info('[sync] snapshot', pathSegments.join('/'), {
+          exists: snap.exists(), fromCache, hasPendingWrites,
+        })
+        if (hasPendingWrites) return
         if (!snap.exists()) {
           onRemote({ exists: false })
           return
@@ -98,14 +102,19 @@ export function subscribeUserPayloadDoc({ userId, pathSegments, onRemote, onErro
 }
 
 export function writeUserPayloadDoc(userId, pathSegments, payload) {
+  const path = pathSegments.join('/')
   const docRef = userDocRef(userId, ...pathSegments)
-  if (!docRef) return Promise.resolve()
-  return setDoc(
-    docRef,
-    {
-      payload,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  )
+  if (!docRef) {
+    console.warn('[sync] write skipped — no docRef (db or user missing)', { path, hasUser: !!userId })
+    return Promise.resolve()
+  }
+  return setDoc(docRef, { payload, updatedAt: serverTimestamp() }, { merge: true })
+    .then(() => {
+      console.info('[sync] write ok', path)
+    })
+    .catch((e) => {
+      // Surface the real cause — callers historically swallowed this with .catch(()=>{})
+      console.error('[sync] write FAILED', path, e?.code || e?.message || e)
+      throw e
+    })
 }
