@@ -30,9 +30,11 @@ export function subscribeUserPayloadDoc({ userId, pathSegments, onRemote, onErro
   let retryCount = 0
 
   function attach() {
+    // No includeMetadataChanges: we only want real data changes. Metadata-only
+    // churn (fromCache/pendingWrites toggles) previously fired setState on every
+    // tick and could revert a just-made local edit.
     currentUnsub = onSnapshot(
       docRef,
-      { includeMetadataChanges: true },
       (snap) => {
         retryCount = 0 // reset backoff on successful snapshot
         const { hasPendingWrites, fromCache } = snap.metadata

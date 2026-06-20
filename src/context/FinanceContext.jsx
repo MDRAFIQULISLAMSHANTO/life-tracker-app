@@ -182,18 +182,29 @@ export function transactionsInMonth(transactions, monthKey) {
 
 export function FinanceProvider({ children }) {
   const { user } = useAuth()
-  const [state, setState] = useState(() => loadFinanceFromStorage())
+  // Start empty so the server-rendered HTML matches the first client render
+  // (localStorage is read after mount, below) — avoids React hydration error #418.
+  const [state, setState] = useState(emptyFinance)
   const stateRef = useRef(state)
   const applyingRemoteRef = useRef(false)
   const seededCloudRef = useRef(false)
   const remoteReadyRef = useRef(false)
   const writeTimerRef = useRef(null)
+  const hydratedRef = useRef(false)
 
   useEffect(() => {
     stateRef.current = state
   }, [state])
 
+  // Load the local cache after mount (post-hydration)
   useEffect(() => {
+    const local = loadFinanceFromStorage()
+    hydratedRef.current = true
+    setState(local)
+  }, [])
+
+  useEffect(() => {
+    if (!hydratedRef.current) return
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch (e) {
@@ -222,8 +233,13 @@ export function FinanceProvider({ children }) {
         }
         remoteReadyRef.current = true
         if (payload && typeof payload === 'object') {
-          applyingRemoteRef.current = true
           const next = normalizeFinancePayload(payload)
+          // Already in sync — don't re-render or churn the applyingRemote flag.
+          if (JSON.stringify(next) === JSON.stringify(stateRef.current)) return
+          // A local edit is queued (newer than this snapshot) — let our pending
+          // write win instead of reverting the user's change.
+          if (writeTimerRef.current) return
+          applyingRemoteRef.current = true
           setState(next)
         }
       },

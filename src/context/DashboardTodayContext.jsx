@@ -68,18 +68,28 @@ const DashboardTodayContext = createContext(null)
 
 export function DashboardTodayProvider({ children }) {
   const { user } = useAuth()
-  const [state, setState] = useState(() => loadFromStorage())
+  // Start empty so server HTML matches first client render — localStorage is
+  // read after mount (below) to avoid React hydration error #418.
+  const [state, setState] = useState(emptyAgenda)
   const stateRef = useRef(state)
   const applyingRemoteRef = useRef(false)
   const seededCloudRef = useRef(false)
   const remoteReadyRef = useRef(false)
   const writeTimerRef = useRef(null)
+  const hydratedRef = useRef(false)
 
   useEffect(() => {
     stateRef.current = state
   }, [state])
 
+  // Load the local cache after mount (post-hydration)
   useEffect(() => {
+    hydratedRef.current = true
+    setState(loadFromStorage())
+  }, [])
+
+  useEffect(() => {
+    if (!hydratedRef.current) return
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch {
@@ -108,7 +118,8 @@ export function DashboardTodayProvider({ children }) {
         }
         remoteReadyRef.current = true
         if (payload) {
-          applyingRemoteRef.current = true
+          // A local edit is queued (newer) — don't revert it with this snapshot.
+          if (writeTimerRef.current) return
           let next = normalizeRemotePayload(payload)
           const demoKey = DEMO_TODAY_KEY(user?.uid)
           if (
@@ -121,6 +132,9 @@ export function DashboardTodayProvider({ children }) {
             next = mergeOneTimeDemoToday(next)
             localStorage.setItem(demoKey, '1')
           }
+          // Already in sync — skip needless re-render + flag churn.
+          if (JSON.stringify(next) === JSON.stringify(stateRef.current)) return
+          applyingRemoteRef.current = true
           setState(next)
         }
       },
