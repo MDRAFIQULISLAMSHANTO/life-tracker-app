@@ -34,8 +34,15 @@ let db
 try {
   db = initializeFirestore(app, {
     localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    // Force long-polling: the default WebChannel streaming connection never
+    // established here (every snapshot stayed fromCache:true with no error),
+    // which is the classic signature of a proxy/ISP that buffers the stream
+    // indefinitely. Long-polling closes each response immediately and gets
+    // through. Auto-detect must be off when force is on.
+    experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: false,
   })
-  if (typeof window !== 'undefined') console.info('[sync] Firestore: persistent cache active')
+  if (typeof window !== 'undefined') console.info('[sync] Firestore: persistent cache + long-polling active')
 } catch (e) {
   if (typeof window !== 'undefined') console.warn('[sync] Firestore: persistent cache failed, using memory cache', e?.message || e)
   db = getFirestore(app)
