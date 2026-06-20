@@ -159,12 +159,34 @@ export function FinanceProvider({ children }) {
     if (!remoteReadyRef.current) return
     if (writeTimerRef.current) clearTimeout(writeTimerRef.current)
     writeTimerRef.current = setTimeout(() => {
+      writeTimerRef.current = null
       writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
     }, 450)
     return () => {
       if (writeTimerRef.current) clearTimeout(writeTimerRef.current)
     }
   }, [state, user?.uid])
+
+  // Flush pending write immediately when the tab/app backgrounds or closes —
+  // mobile suspends timers aggressively, so the 450ms debounce can otherwise be lost
+  useEffect(() => {
+    if (!user?.uid) return
+    const flush = () => {
+      if (!writeTimerRef.current) return
+      clearTimeout(writeTimerRef.current)
+      writeTimerRef.current = null
+      writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [user?.uid])
 
   const api = useMemo(() => {
     const ledgerMonthKey = state.ledgerMonthKey || monthKeyFromDate(new Date())

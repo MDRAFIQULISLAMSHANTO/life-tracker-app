@@ -72,6 +72,7 @@ export function DashboardTodayProvider({ children }) {
   const stateRef = useRef(state)
   const applyingRemoteRef = useRef(false)
   const seededCloudRef = useRef(false)
+  const remoteReadyRef = useRef(false)
   const writeTimerRef = useRef(null)
 
   useEffect(() => {
@@ -88,6 +89,7 @@ export function DashboardTodayProvider({ children }) {
 
   useEffect(() => {
     seededCloudRef.current = false
+    remoteReadyRef.current = false
   }, [user?.uid])
 
   useEffect(() => {
@@ -97,12 +99,14 @@ export function DashboardTodayProvider({ children }) {
       pathSegments: FS_PATH,
       onRemote: ({ exists, payload }) => {
         if (!exists) {
+          remoteReadyRef.current = true
           if (!seededCloudRef.current) {
             seededCloudRef.current = true
             writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
           }
           return
         }
+        remoteReadyRef.current = true
         if (payload) {
           applyingRemoteRef.current = true
           let next = normalizeRemotePayload(payload)
@@ -142,14 +146,39 @@ export function DashboardTodayProvider({ children }) {
       applyingRemoteRef.current = false
       return
     }
+    // Don't write until Firestore has confirmed the doc state (exists or not)
+    // — prevents overwriting real data with empty localStorage on login
+    if (!remoteReadyRef.current) return
     if (writeTimerRef.current) clearTimeout(writeTimerRef.current)
     writeTimerRef.current = setTimeout(() => {
+      writeTimerRef.current = null
       writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
     }, 450)
     return () => {
       if (writeTimerRef.current) clearTimeout(writeTimerRef.current)
     }
   }, [state, user?.uid])
+
+  // Flush pending write immediately when the tab/app backgrounds or closes —
+  // mobile suspends timers aggressively, so the 450ms debounce can otherwise be lost
+  useEffect(() => {
+    if (!user?.uid) return
+    const flush = () => {
+      if (!writeTimerRef.current) return
+      clearTimeout(writeTimerRef.current)
+      writeTimerRef.current = null
+      writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [user?.uid])
 
   const resetDashboardForMonth = useCallback((year, month1to12) => {
     const key = monthKeyFromParts(year, month1to12)

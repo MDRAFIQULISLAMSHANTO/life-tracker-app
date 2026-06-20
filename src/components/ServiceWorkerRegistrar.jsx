@@ -10,6 +10,13 @@ export default function ServiceWorkerRegistrar() {
 
     let rafId = null
 
+    const isTypingTarget = () => {
+      const el = document.activeElement
+      if (!el) return false
+      const tag = el.tagName
+      return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable
+    }
+
     const setVh = () => {
       // Cancel any pending animation frame to debounce rapid fires
       if (rafId) cancelAnimationFrame(rafId)
@@ -17,6 +24,13 @@ export default function ServiceWorkerRegistrar() {
         const vh = window.innerHeight * 0.01
         document.documentElement.style.setProperty('--vh', `${vh}px`)
       })
+    }
+
+    // resize fires when the on-screen keyboard opens/closes (innerHeight shrinks) —
+    // skip recalculating --vh in that case or the dashboard shell squishes to fit above the keyboard
+    const onResize = () => {
+      if (isTypingTarget()) return
+      setVh()
     }
 
     const forceRepaint = () => {
@@ -49,7 +63,7 @@ export default function ServiceWorkerRegistrar() {
     }
 
     setVh()
-    window.addEventListener('resize', setVh, { passive: true })
+    window.addEventListener('resize', onResize, { passive: true })
     window.addEventListener('orientationchange', onOrientationChange)
     window.addEventListener('focus', onFocus)
     window.addEventListener('pageshow', onPageShow)
@@ -57,7 +71,7 @@ export default function ServiceWorkerRegistrar() {
 
     return () => {
       if (rafId) cancelAnimationFrame(rafId)
-      window.removeEventListener('resize', setVh)
+      window.removeEventListener('resize', onResize)
       window.removeEventListener('orientationchange', onOrientationChange)
       window.removeEventListener('focus', onFocus)
       window.removeEventListener('pageshow', onPageShow)
