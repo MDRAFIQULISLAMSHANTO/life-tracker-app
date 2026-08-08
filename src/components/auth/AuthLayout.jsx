@@ -10,12 +10,14 @@ function AuthLayout({ children, title, subtitle }) {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 py-12"
-      style={{ background: 'linear-gradient(135deg, #f0f4ff 0%, #faf5ff 50%, #fdf2f8 100%)' }}
+      // Was a hardcoded light gradient, which left a white card and invisible
+      // logo whenever the app was in dark mode.
+      style={{ background: 'var(--bg)' }}
     >
       {/* Decorative blobs */}
       <div style={{
         position: 'fixed', top: '-10%', right: '-10%', width: 400, height: 400,
-        borderRadius: '50%', background: 'rgba(99,102,241,0.08)', filter: 'blur(60px)', pointerEvents: 'none',
+        borderRadius: '50%', background: 'rgba(var(--accent-rgb),0.10)', filter: 'blur(60px)', pointerEvents: 'none',
       }} />
       <div style={{
         position: 'fixed', bottom: '-10%', left: '-10%', width: 350, height: 350,
@@ -28,7 +30,7 @@ function AuthLayout({ children, title, subtitle }) {
           type="button"
           onClick={() => router.push('/')}
           className="flex items-center gap-2 text-sm font-semibold mb-8 transition-opacity hover:opacity-60"
-          style={{ color: '#64748b' }}
+          style={{ color: 'var(--text-2)' }}
         >
           <ArrowLeft className="w-4 h-4" />
           Back to home
@@ -40,28 +42,28 @@ function AuthLayout({ children, title, subtitle }) {
             <Logo height={56} />
           </div>
           {subtitle && (
-            <p className="text-sm font-medium mt-1" style={{ color: '#94a3b8' }}>{subtitle}</p>
+            <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-2)' }}>{subtitle}</p>
           )}
         </div>
 
         {/* Card */}
         <div
-          className="rounded-3xl p-8 shadow-xl"
+          className="rounded-3xl p-8"
           style={{
-            background: '#ffffff',
-            border: '1px solid rgba(99,102,241,0.10)',
-            boxShadow: '0 20px 60px rgba(99,102,241,0.10), 0 4px 16px rgba(0,0,0,0.06)',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--card-border)',
+            boxShadow: 'var(--card-shadow), 0 20px 60px rgba(var(--accent-rgb),0.10)',
           }}
         >
           {title && (
-            <h2 className="text-xl font-extrabold mb-6 text-center" style={{ color: '#1e293b' }}>
+            <h2 className="text-xl font-extrabold mb-6 text-center" style={{ color: 'var(--text-1)' }}>
               {title}
             </h2>
           )}
           {children}
         </div>
 
-        <p className="text-center text-xs mt-6" style={{ color: '#cbd5e1' }}>
+        <p className="text-center text-xs mt-6" style={{ color: 'var(--text-3)' }}>
           Secured by Firebase Authentication
         </p>
       </div>

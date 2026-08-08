@@ -40,16 +40,16 @@ export default function CTA() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div 
           ref={containerRef}
-          className="relative text-center bg-white border border-gray-200 rounded-3xl p-12 sm:p-16 shadow-lg"
+          className="relative text-center surface-1 border border-token rounded-3xl p-12 sm:p-16 shadow-lg"
         >
           <div className="relative z-10">
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-strong mb-6 leading-tight">
               Make your productivity more efficient.{' '}
               <span className="block mt-2 text-indigo-600">
                 From this time.
               </span>
             </h2>
-            <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
+            <p className="text-xl text-muted mb-10 max-w-2xl mx-auto">
               Join thousands who have simplified their daily workflow.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -61,7 +61,7 @@ export default function CTA() {
               </button>
               <button
                 onClick={() => router.push('/login')}
-                className="w-full sm:w-auto px-8 sm:px-10 py-4 bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-colors duration-200"
+                className="w-full sm:w-auto px-8 sm:px-10 py-4 surface-1 border border-token text-muted font-semibold rounded-lg hover:border-token hover:surface-2 transition-colors duration-200"
               >
                 Login
               </button>

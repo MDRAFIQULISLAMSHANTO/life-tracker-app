@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { Sparkles, X, Send, AlertCircle, Loader2, ChevronDown } from 'lucide-react'
 import { useFinance } from '../../context/FinanceContext'
 import { formatCurrency } from '../../utils/formatters'
+import { auth } from '../../lib/firebase'
 
 function buildFinanceContext(state) {
   const { currency, ledgerMonthKey, monthIncome, monthExpense, monthNet, accounts, loans, expenseByCategory, transactions } = state
@@ -143,6 +144,11 @@ export default function AiAdvisor() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -180,9 +186,14 @@ export default function AiAdvisor() {
     setLoading(true)
 
     try {
+      const idToken = await auth?.currentUser?.getIdToken?.()
+      if (!idToken) throw new Error('Sign in to use the AI advisor.')
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
         body: JSON.stringify({
           messages: newMessages,
           financeContext: finCtx,
@@ -205,7 +216,9 @@ export default function AiAdvisor() {
     }
   }
 
-  const portal = typeof document !== 'undefined' ? document.body : null
+  // Portalling on the very first client render doesn't match the (empty) server
+  // output and blew up hydration for the whole tree. Mount first, then portal.
+  const portal = mounted && typeof document !== 'undefined' ? document.body : null
 
   const floatingUI = (
     <>
@@ -214,7 +227,8 @@ export default function AiAdvisor() {
         onClick={() => setOpen((o) => !o)}
         className="fixed z-[55] flex items-center justify-center transition-all active:scale-95 left-5 lg:left-5"
         style={{
-          bottom: 'max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem))',
+          // Clears the mobile tab bar; drops back down once the tab bar is gone
+          bottom: 'calc(env(safe-area-inset-bottom) + 4.75rem)',
           width: 42,
           height: 42,
           borderRadius: 14,
@@ -235,7 +249,7 @@ export default function AiAdvisor() {
         <div
           className="fixed z-[55] flex flex-col overflow-hidden shadow-2xl left-3 right-3 lg:right-auto lg:left-4"
           style={{
-            bottom: 'calc(max(1.5rem, env(safe-area-inset-bottom) + 1rem) + 52px)',
+            bottom: 'calc(env(safe-area-inset-bottom) + 4.75rem + 52px)',
             width: 'auto',
             maxWidth: 380,
             height: 'min(460px, calc(100vh - 12rem))',

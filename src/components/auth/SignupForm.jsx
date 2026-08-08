@@ -71,7 +71,7 @@ function SignupForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+            className="w-full px-4 py-3 border border-token rounded-xl surface-2 text-strong focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
             required
             disabled={loading}
           />
@@ -87,7 +87,7 @@ function SignupForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Create a password"
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+            className="w-full px-4 py-3 border border-token rounded-xl surface-2 text-strong focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
             required
             disabled={loading}
             minLength={6}
@@ -105,7 +105,7 @@ function SignupForm() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Confirm your password"
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+            className="w-full px-4 py-3 border border-token rounded-xl surface-2 text-strong focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
             required
             disabled={loading}
             minLength={6}
@@ -129,7 +129,7 @@ function SignupForm() {
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-200"></div>
+          <div className="w-full border-t border-token"></div>
         </div>
         <div className="relative flex justify-center text-sm">
           <span className="px-2 bg-background-card text-text-secondary">Or continue with</span>

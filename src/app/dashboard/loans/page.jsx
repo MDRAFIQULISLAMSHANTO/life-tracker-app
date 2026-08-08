@@ -252,7 +252,7 @@ export default function LoansPage() {
               <div onClick={() => setCountInFinance((v) => !v)}
                 className="relative w-10 h-6 rounded-full transition-colors cursor-pointer shrink-0"
                 style={{ background: countInFinance ? 'var(--accent)' : 'var(--input-border)' }}>
-                <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform"
+                <div className="absolute top-1 left-1 w-4 h-4 rounded-full surface-1 shadow transition-transform"
                   style={{ transform: countInFinance ? 'translateX(16px)' : 'translateX(0)' }} />
               </div>
               <span className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>{c.countLabel}</span>

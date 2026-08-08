@@ -19,32 +19,32 @@ export default function WhySection() {
       description: 'No clutter, no confusion. Just what you need, when you need it.',
       icon: '✨',
       gradient: 'from-purple-500 to-pink-500',
-      bgColor: 'bg-white',
-      borderColor: 'border-gray-200',
+      bgColor: 'surface-1',
+      borderColor: 'border-token',
     },
     {
       title: 'Built for daily use',
       description: 'Fast, reliable, and always ready when you are. Designed for real life.',
       icon: '⚡',
       gradient: 'from-blue-500 to-cyan-500',
-      bgColor: 'bg-white',
-      borderColor: 'border-gray-200',
+      bgColor: 'surface-1',
+      borderColor: 'border-token',
     },
     {
       title: 'Mobile-first',
       description: 'Works beautifully on every device. Your life, anywhere you go.',
       icon: '📱',
       gradient: 'from-emerald-500 to-teal-500',
-      bgColor: 'bg-white',
-      borderColor: 'border-gray-200',
+      bgColor: 'surface-1',
+      borderColor: 'border-token',
     },
     {
       title: 'Private & secure',
       description: 'Your data stays yours. Always. Bank-level security for your personal information.',
       icon: '🔒',
       gradient: 'from-indigo-500 to-purple-500',
-      bgColor: 'bg-white',
-      borderColor: 'border-gray-200',
+      bgColor: 'surface-1',
+      borderColor: 'border-token',
     },
   ]
 
@@ -103,13 +103,13 @@ export default function WhySection() {
     <section ref={sectionRef} className="relative py-20 sm:py-24 lg:py-32 bg-surface">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div ref={titleRef} className="text-center mb-16 opacity-100">
-          <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
+          <h2 className="text-4xl sm:text-5xl font-bold text-strong mb-4">
             Why choose{' '}
             <span className="text-indigo-600">
               Livio
             </span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-muted max-w-2xl mx-auto">
             Built with care, designed for you.
           </p>
         </div>
@@ -123,10 +123,10 @@ export default function WhySection() {
               
               <div className="relative z-10">
                 <div className="text-4xl mb-4">{reason.icon}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                <h3 className="text-xl font-bold text-strong mb-3">
                   {reason.title}
                 </h3>
-                <p className="text-gray-600 leading-relaxed">{reason.description}</p>
+                <p className="text-muted leading-relaxed">{reason.description}</p>
               </div>
             </div>
           ))}

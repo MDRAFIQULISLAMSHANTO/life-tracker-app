@@ -23,12 +23,12 @@ function FirebaseSetupNotice() {
               <li>Create a Firebase project at <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Firebase Console</a></li>
               <li>Enable Authentication methods (Email/Password, Google)</li>
               <li>Get your Firebase config from Project Settings</li>
-              <li>Create a <code className="bg-gray-100 px-1 rounded">.env.local</code> file in the project root</li>
-              <li>Add your Firebase credentials to <code className="bg-gray-100 px-1 rounded">.env.local</code></li>
+              <li>Create a <code className="surface-2 px-1 rounded">.env.local</code> file in the project root</li>
+              <li>Add your Firebase credentials to <code className="surface-2 px-1 rounded">.env.local</code></li>
             </ol>
           </div>
 
-          <div className="bg-gray-50 p-4 rounded-xl">
+          <div className="surface-2 p-4 rounded-xl">
             <p className="font-semibold text-text-primary mb-2">Example .env.local:</p>
             <pre className="text-xs overflow-x-auto">
 {`NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key

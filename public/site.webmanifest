@@ -1,20 +1,46 @@
 {
-  "name": "Livio - Personal Finance",
+  "id": "/dashboard",
+  "name": "Livio — Money & Growth",
   "short_name": "Livio",
-  "description": "Personal finance management — budgets, accounts, and insights",
+  "description": "Track money, habits, goals and your daily plan in one place",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#0d1117",
   "theme_color": "#6366f1",
   "icons": [
     {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
       "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
-  "categories": ["finance", "productivity"],
+  "shortcuts": [
+    { "name": "Today's plan", "url": "/dashboard/plan" },
+    { "name": "Habits", "url": "/dashboard/habits" },
+    { "name": "Add expense", "url": "/dashboard/expenses" }
+  ],
+  "categories": ["finance", "productivity", "lifestyle"],
   "prefer_related_applications": false
 }

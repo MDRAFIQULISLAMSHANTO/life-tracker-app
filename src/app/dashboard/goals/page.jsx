@@ -1,70 +1,218 @@
 'use client'
 
-import Link from 'next/link'
-import { useMemo } from 'react'
-import { Target } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Plus, Target, TrendingUp } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
+import { useGrowth } from '../../../context/GrowthContext'
 import { useFinance } from '../../../context/FinanceContext'
 import { formatCurrency } from '../../../utils/formatters'
+import { goalProgress } from '../../../lib/growthMath'
+import { Button, Card, EmptyState, Field, PageHeader, ProgressBar, Select, StatTile } from '../../../components/ui'
+import { GoalCard, GoalFormSheet, useFinanceLinkValue } from '../../../components/growth/GoalBits'
+
+const TRACK_STATUSES = [
+  { value: 'not-started', label: '⚪ Not started' },
+  { value: 'in-progress', label: '🟡 In progress' },
+  { value: 'done', label: '🟢 Done' },
+]
 
 export default function GoalsPage() {
   const { user, loading } = useAuth()
-  const { currency, transactions } = useFinance()
+  const { goals, tracks, updateTrack, library, updateLibraryItem } = useGrowth()
+  const { currency, lifetimeNet } = useFinance()
+  const getFinanceValue = useFinanceLinkValue()
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [filter, setFilter] = useState('active')
 
-  const stats = useMemo(() => {
-    const income = transactions.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0)
-    const expense = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0)
-    const savings = income - expense
-    return { income, expense, savings }
-  }, [transactions])
+  const rootGoals = useMemo(() => goals.filter((g) => !g.parentGoalId), [goals])
+  const childrenOf = useMemo(() => {
+    const map = new Map()
+    goals.forEach((g) => {
+      if (!g.parentGoalId) return
+      if (!map.has(g.parentGoalId)) map.set(g.parentGoalId, [])
+      map.get(g.parentGoalId).push(g)
+    })
+    return map
+  }, [goals])
 
-  if (loading) return <div className="text-text-secondary">Loading...</div>
-  if (!user) return null
+  const visible = rootGoals.filter((g) => (filter === 'all' ? true : (g.status || 'active') === filter))
+
+  const overall = useMemo(() => {
+    if (!rootGoals.length) return 0
+    const sum = rootGoals.reduce(
+      (s, g) => s + goalProgress(g, { financeValue: getFinanceValue(g.financeLink) }).pct,
+      0
+    )
+    return Math.round(sum / rootGoals.length)
+  }, [rootGoals, getFinanceValue])
+
+  if (loading || !user) return null
 
   return (
-    <div className="space-y-6 pb-20">
-      <div>
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Goals</h1>
-        <p className="text-gray-500 mt-2 font-medium">
-          A practical MVP: savings overview + link to Goal trackers. (Next: dedicated goal objects and progress.)
-        </p>
+    <div className="space-y-5 sm:space-y-6">
+      <PageHeader
+        title="Goals"
+        subtitle="Targets with steps, dates and live progress."
+        icon={Target}
+        actions={
+          <Button onClick={() => setSheetOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New goal
+          </Button>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatTile label="Average progress" value={`${overall}%`} hint={`${rootGoals.length} goals`} icon={Target} />
+        <StatTile
+          label="Net saved"
+          value={formatCurrency(lifetimeNet, currency)}
+          hint="lifetime income − expenses"
+          tone={lifetimeNet >= 0 ? 'positive' : 'negative'}
+          icon={TrendingUp}
+        />
+        <StatTile
+          label="Steps done"
+          value={goals.reduce((s, g) => s + (g.milestones || []).filter((m) => m.done).length, 0)}
+          hint={`of ${goals.reduce((s, g) => s + (g.milestones || []).length, 0)}`}
+        />
+        <StatTile label="Completed" value={goals.filter((g) => g.status === 'done').length} hint="goals closed" />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-background-card rounded-2xl p-6 shadow-soft">
-          <div className="text-sm text-text-secondary">Total Income</div>
-          <div className="text-2xl font-extrabold text-text-primary mt-2">{formatCurrency(stats.income, currency)}</div>
-        </div>
-        <div className="bg-background-card rounded-2xl p-6 shadow-soft">
-          <div className="text-sm text-text-secondary">Total Expense</div>
-          <div className="text-2xl font-extrabold text-danger mt-2">{formatCurrency(stats.expense, currency)}</div>
-        </div>
-        <div className="bg-background-card rounded-2xl p-6 shadow-soft">
-          <div className="text-sm text-text-secondary">Savings</div>
-          <div className="text-2xl font-extrabold text-text-primary mt-2">{formatCurrency(stats.savings, currency)}</div>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>
+          Your goals
+        </h2>
+        <Select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          aria-label="Filter goals"
+          style={{ width: 'auto', minHeight: 38 }}
+        >
+          <option value="active">Active</option>
+          <option value="done">Completed</option>
+          <option value="all">All</option>
+        </Select>
       </div>
 
-      <div className="bg-white rounded-[2rem] p-6 lg:p-10 shadow-sm border border-gray-100/50">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-            <Target className="w-5 h-5" />
+      {visible.length === 0 ? (
+        <EmptyState
+          icon={Target}
+          title="No goals here yet"
+          description="A goal is a target plus the steps to get there. Add one and break it into milestones."
+          action={<Button onClick={() => setSheetOpen(true)}>Add a goal</Button>}
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          {visible.map((g) => (
+            <GoalCard key={g.id} goal={g} subGoals={childrenOf.get(g.id) || []} />
+          ))}
+        </div>
+      )}
+
+      {tracks.length > 0 && (
+        <Card className="flex flex-col gap-4">
+          <div>
+            <h2 className="text-lg font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>
+              Learning tracks
+            </h2>
+            <p className="mt-0.5 text-xs" style={{ color: 'var(--text-2)' }}>
+              Update these once a week — five minutes at the end of a work session is enough.
+            </p>
           </div>
-          <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">Goal Trackers</h2>
-        </div>
-        <p className="text-text-secondary">
-          For now, goals are managed as Trackers with the “Goal” format. Create one from Templates in Trackers.
-        </p>
-        <div className="mt-5">
-          <Link
-            href="/dashboard/trackers"
-            className="inline-flex items-center justify-center px-6 py-3 rounded-2xl bg-gray-900 text-white font-bold hover:bg-gray-800 transition-colors"
-          >
-            Go to Trackers
-          </Link>
-        </div>
-      </div>
+          <div className="flex flex-col gap-3">
+            {tracks.map((t) => (
+              <div key={t.id} className="flex flex-col gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm font-bold" style={{ color: 'var(--text-1)' }}>
+                    {t.name}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={t.status}
+                      onChange={(e) => updateTrack(t.id, { status: e.target.value })}
+                      aria-label={`${t.name} status`}
+                      style={{ width: 'auto', minHeight: 34, fontSize: 16 }}
+                    >
+                      {TRACK_STATUSES.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </Select>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={t.percent || 0}
+                      onChange={(e) => updateTrack(t.id, { percent: Number(e.target.value) })}
+                      aria-label={`${t.name} percent complete`}
+                      style={{ width: 96 }}
+                    />
+                    <span className="w-9 text-right text-xs font-bold tabular-nums" style={{ color: 'var(--text-2)' }}>
+                      {t.percent || 0}%
+                    </span>
+                  </div>
+                </div>
+                <ProgressBar value={t.percent || 0} height={6} />
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {library.length > 0 && (
+        <Card className="flex flex-col gap-3">
+          <h2 className="text-lg font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>
+            Reading list
+          </h2>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {library.map((b) => (
+              <div
+                key={b.id}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+                style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={b.status === 'done'}
+                  onChange={(e) => updateLibraryItem(b.id, { status: e.target.checked ? 'done' : 'todo' })}
+                  aria-label={`Mark ${b.title} as read`}
+                  className="h-4 w-4 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="truncate text-sm font-bold"
+                    style={{
+                      color: 'var(--text-1)',
+                      textDecoration: b.status === 'done' ? 'line-through' : 'none',
+                    }}
+                  >
+                    {b.title}
+                  </p>
+                  <p className="truncate text-xs" style={{ color: 'var(--text-3)' }}>
+                    {b.author} · {b.topic}
+                  </p>
+                </div>
+                {b.url && (
+                  <a
+                    href={b.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 text-xs font-bold"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    Open
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <GoalFormSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
     </div>
   )
 }
-

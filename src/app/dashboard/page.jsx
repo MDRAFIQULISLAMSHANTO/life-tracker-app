@@ -13,9 +13,7 @@ import QuickNotes from '../../components/dashboard/QuickNotes'
 import RecentActivity from '../../components/dashboard/RecentActivity'
 import { formatCurrency } from '../../utils/formatters'
 import { useFinance } from '../../context/FinanceContext'
-import { useDashboardToday } from '../../context/DashboardTodayContext'
 import WalletCard from '../../components/dashboard/WalletCard'
-import { useReminderNotifications } from '../../hooks/useReminderNotifications'
 
 const ExpenseDonutChart = dynamic(() => import('../../components/charts/ExpenseDonutChart'), {
   loading: () => <div className="glass-card animate-pulse" style={{ height: 300 }} />,
@@ -56,9 +54,6 @@ export default function DashboardPage() {
     monthIncome, monthExpense, monthNet, totalBalance, accountBalances,
     expenseByCategory, budgetRowsFull, transactions,
   } = useFinance()
-  const { reminders } = useDashboardToday()
-  useReminderNotifications(reminders)
-
   const statsRef = useRef(null)
   const chartsRef = useRef(null)
 

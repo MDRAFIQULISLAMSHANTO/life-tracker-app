@@ -46,16 +46,22 @@ module.exports = {
           800: '#115e59',
           900: '#134e4a',
         },
-        success: '#22c55e',
-        warning: '#f59e0b',
-        danger: '#ef4444',
+        success: 'var(--success)',
+        warning: 'var(--warning)',
+        danger: 'var(--danger)',
+        // Theme-aware aliases — these used to be hardcoded light-mode hex
+        // values, which is why anything using them broke in dark mode.
+        primary: {
+          DEFAULT: 'var(--accent)',
+          600: 'var(--accent)',
+        },
         text: {
-          primary: '#111827',
-          secondary: '#6b7280',
+          primary: 'var(--text-1)',
+          secondary: 'var(--text-2)',
         },
         background: {
-          DEFAULT: '#F9FAFB',
-          card: '#FFFFFF',
+          DEFAULT: 'var(--bg)',
+          card: 'var(--card-bg)',
         },
       },
       borderRadius: {

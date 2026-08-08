@@ -23,7 +23,7 @@ function ExpenseBarChart({ data = [] }) {
       const data = payload[0].payload
       const percentage = data.total ? ((data.value / data.total) * 100).toFixed(1) : '0'
       return (
-        <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
+        <div className="surface-1 p-4 rounded-xl shadow-lg border border-token">
           <p className="font-semibold text-text-primary mb-1">{data.name}</p>
           <p className="text-lg font-bold text-text-primary mb-1">{formatCurrency(data.value, currency)}</p>
           <p className="text-sm text-text-secondary">{percentage}% of total</p>
@@ -85,7 +85,7 @@ function ExpenseBarChart({ data = [] }) {
               return (
                 <div 
                   key={item.name} 
-                  className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-xl surface-2 hover:surface-2 transition-colors"
                 >
                   <div className="flex items-center space-x-2">
                     <div

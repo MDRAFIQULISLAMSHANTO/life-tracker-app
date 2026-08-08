@@ -59,7 +59,7 @@ export default function Modules() {
         {modules.map((module, index) => (
           <div
             key={index}
-            className={`relative bg-gradient-to-br ${module.bgGradient} p-8 rounded-2xl border border-gray-200 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden`}
+            className={`relative bg-gradient-to-br ${module.bgGradient} p-8 rounded-2xl border border-token hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden`}
           >
             {/* Gradient accent */}
             <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${module.gradient} opacity-20 rounded-full blur-3xl`}></div>

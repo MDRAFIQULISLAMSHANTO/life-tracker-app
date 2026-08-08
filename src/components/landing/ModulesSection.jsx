@@ -138,13 +138,13 @@ export default function ModulesSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Title Section */}
         <div ref={titleRef} className="text-center mb-12 sm:mb-16 opacity-100">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-strong mb-4 tracking-tight">
             Three powerful modules.{' '}
             <span className="text-indigo-600">
               One seamless flow.
             </span>
           </h2>
-          <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg sm:text-xl text-muted max-w-2xl mx-auto">
             Everything you need to manage your money, tasks, and life in one place.
           </p>
         </div>
@@ -156,7 +156,7 @@ export default function ModulesSection() {
             return (
               <div
                 key={index}
-                className="relative bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 hover:shadow-md transition-shadow duration-200"
+                className="relative surface-1 border border-token rounded-2xl p-6 sm:p-8 hover:shadow-md transition-shadow duration-200"
               >
                 {/* Icon */}
                 <div className={`inline-flex p-3 ${module.iconBg} border ${module.borderColor} rounded-xl mb-4`}>
@@ -164,10 +164,10 @@ export default function ModulesSection() {
                 </div>
 
                 {/* Title & Description */}
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                <h3 className="text-xl sm:text-2xl font-bold text-strong mb-2">
                   {module.title}
                 </h3>
-                <p className="text-gray-600 mb-6 text-sm sm:text-base leading-relaxed">
+                <p className="text-muted mb-6 text-sm sm:text-base leading-relaxed">
                   {module.description}
                 </p>
 
@@ -176,7 +176,7 @@ export default function ModulesSection() {
                   {module.features.map((feature, idx) => (
                     <li key={idx} className="feature-item flex items-start">
                       <div className={`flex-shrink-0 w-1.5 h-1.5 rounded-full bg-gradient-to-r ${module.gradient} mt-2 mr-3`}></div>
-                      <span className="text-sm text-gray-600">{feature}</span>
+                      <span className="text-sm text-muted">{feature}</span>
                     </li>
                   ))}
                 </ul>

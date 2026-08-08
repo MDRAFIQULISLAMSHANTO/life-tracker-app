@@ -190,7 +190,11 @@ export function FinanceProvider({ children }) {
   const seededCloudRef = useRef(false)
   const remoteReadyRef = useRef(false)
   const writeTimerRef = useRef(null)
-  const hydratedRef = useRef(false)
+  // Must be state, not a ref. A ref flips synchronously inside the load effect,
+  // so the persist effect below ran on the same pass while `state` was still
+  // empty and wrote that over the cache — which StrictMode's second effect pass
+  // then read back as the real value.
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
     stateRef.current = state
@@ -198,19 +202,18 @@ export function FinanceProvider({ children }) {
 
   // Load the local cache after mount (post-hydration)
   useEffect(() => {
-    const local = loadFinanceFromStorage()
-    hydratedRef.current = true
-    setState(local)
+    setState(loadFinanceFromStorage())
+    setHydrated(true)
   }, [])
 
   useEffect(() => {
-    if (!hydratedRef.current) return
+    if (!hydrated) return
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch (e) {
       console.warn('Unable to persist finance state:', e)
     }
-  }, [state])
+  }, [state, hydrated])
 
   useEffect(() => {
     seededCloudRef.current = false

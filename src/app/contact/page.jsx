@@ -17,7 +17,7 @@ export default function ContactPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center shadow-sm sm:p-12">
+        <div className="rounded-2xl border border-neutral-200 surface-1 p-8 text-center shadow-sm sm:p-12">
           <p className="text-neutral-500 mb-6 text-sm sm:text-base">
             Send an email and I&apos;ll get back to you as soon as possible.
           </p>

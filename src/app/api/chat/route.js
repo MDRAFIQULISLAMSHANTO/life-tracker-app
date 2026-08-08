@@ -1,8 +1,84 @@
 const GEMINI_MODEL = 'gemini-3-flash-preview'
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 
+const IDENTITY_LOOKUP = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup'
+
+/**
+ * Verify a Firebase ID token without pulling in firebase-admin (which would need
+ * a service-account secret this project doesn't have). accounts:lookup rejects
+ * expired/forged tokens, so a success response proves the caller is signed in.
+ * Results are cached briefly so a chat burst is one lookup, not one per message.
+ */
+const tokenCache = new Map() // idToken -> { uid, expires }
+const TOKEN_TTL_MS = 5 * 60 * 1000
+
+async function verifyIdToken(idToken) {
+  const now = Date.now()
+  const hit = tokenCache.get(idToken)
+  if (hit && hit.expires > now) return hit.uid
+
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+  if (!apiKey) return null
+
+  const res = await fetch(`${IDENTITY_LOOKUP}?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken }),
+  })
+  if (!res.ok) return null
+  const data = await res.json()
+  const uid = data?.users?.[0]?.localId
+  if (!uid) return null
+
+  if (tokenCache.size > 500) tokenCache.clear()
+  tokenCache.set(idToken, { uid, expires: now + TOKEN_TTL_MS })
+  return uid
+}
+
+/**
+ * Per-uid sliding window. In-memory, so it is per serverless instance rather
+ * than global — enough to stop a single client hammering the key, not a
+ * distributed quota. Move to Firestore/Redis if this ever runs at scale.
+ */
+const RATE_LIMIT = 20
+const RATE_WINDOW_MS = 60 * 1000
+const hits = new Map() // uid -> number[] (timestamps)
+
+function rateLimited(uid) {
+  const now = Date.now()
+  const recent = (hits.get(uid) || []).filter((t) => now - t < RATE_WINDOW_MS)
+  if (recent.length >= RATE_LIMIT) {
+    hits.set(uid, recent)
+    return true
+  }
+  recent.push(now)
+  hits.set(uid, recent)
+  if (hits.size > 1000) {
+    for (const [k, v] of hits) if (!v.some((t) => now - t < RATE_WINDOW_MS)) hits.delete(k)
+  }
+  return false
+}
+
 export async function POST(req) {
   try {
+    const authHeader = req.headers.get('authorization') || ''
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+    if (!idToken) {
+      return Response.json({ error: 'Sign in to use the AI advisor.' }, { status: 401 })
+    }
+
+    const uid = await verifyIdToken(idToken)
+    if (!uid) {
+      return Response.json({ error: 'Session expired. Sign in again.' }, { status: 401 })
+    }
+
+    if (rateLimited(uid)) {
+      return Response.json(
+        { error: 'Too many messages. Wait a minute and try again.' },
+        { status: 429 }
+      )
+    }
+
     const apiKey = process.env.GEMINI_API_KEY || process.env.Gemini_api_key
     if (!apiKey || apiKey === 'your_gemini_api_key_here') {
       return Response.json({ error: 'GEMINI_API_KEY not configured on server. Add it to Vercel environment variables.' }, { status: 500 })

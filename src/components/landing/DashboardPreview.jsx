@@ -112,25 +112,25 @@ export default function DashboardPreview() {
     <section ref={sectionRef} className="relative py-20 bg-surface">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div ref={titleRef} className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
+          <h2 className="text-4xl sm:text-5xl font-bold text-strong mb-4">
             Your dashboard, simplified
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-muted max-w-2xl mx-auto">
             Everything you need to manage your money, tasks, and life in one beautiful interface.
           </p>
         </div>
 
         <div 
           ref={containerRef}
-          className="relative bg-white border border-gray-200 rounded-3xl shadow-lg overflow-hidden"
+          className="relative surface-1 border border-token rounded-3xl shadow-lg overflow-hidden"
         >
           <div className="p-6 sm:p-8 lg:p-12">
-            <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-200">
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-token">
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">
+                <h3 className="text-xl font-semibold text-strong">
                   Hey there! Welcome back
                 </h3>
-                <p className="text-gray-600 mt-1">
+                <p className="text-muted mt-1">
                   Here's your overview for today
                 </p>
               </div>
@@ -175,12 +175,12 @@ export default function DashboardPreview() {
             </div>
 
             <div ref={chartsRef} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">Expense Breakdown</h4>
+              <div className="surface-2 border border-token rounded-2xl p-6">
+                <h4 className="text-lg font-semibold text-strong mb-4">Expense Breakdown</h4>
                 <ExpenseDonutChart data={expenseData} />
               </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">Monthly Trends</h4>
+              <div className="surface-2 border border-token rounded-2xl p-6">
+                <h4 className="text-lg font-semibold text-strong mb-4">Monthly Trends</h4>
                 <DailyTrendChart data={dailyTrendData} />
               </div>
             </div>
@@ -188,7 +188,7 @@ export default function DashboardPreview() {
         </div>
 
         <div className="text-center mt-8">
-          <p className="text-gray-600">
+          <p className="text-muted">
             Clean, intuitive, and designed for daily use
           </p>
         </div>

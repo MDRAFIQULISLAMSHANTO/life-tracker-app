@@ -5,7 +5,19 @@ import { useEffect } from 'react'
 export default function ServiceWorkerRegistrar() {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {})
+      // In dev the SW's cache-first rule for /_next/static serves stale chunks
+      // after an edit, which looks like "my change didn't apply". Register only
+      // in production, and actively tear down any SW left over from a dev session.
+      if (process.env.NODE_ENV === 'production') {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {})
+      } else {
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          regs.forEach((r) => r.unregister())
+        }).catch(() => {})
+        if (typeof caches !== 'undefined') {
+          caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {})
+        }
+      }
     }
 
     let rafId = null

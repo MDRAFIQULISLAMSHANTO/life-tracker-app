@@ -59,8 +59,8 @@ export default function PricingPage() {
           {plans.map((plan, index) => (
             <div
               key={index}
-              className={`bg-white rounded-2xl border-2 p-8 ${
-                plan.primary ? 'border-primary' : 'border-gray-200'
+              className={`surface-1 rounded-2xl border-2 p-8 ${
+                plan.primary ? 'border-primary' : 'border-token'
               }`}
             >
               <div className="mb-6">
@@ -101,7 +101,7 @@ export default function PricingPage() {
                 className={`w-full py-3 rounded-lg font-medium transition-colors ${
                   plan.primary
                     ? 'bg-primary text-white hover:bg-primary-600'
-                    : 'bg-white text-text-primary border border-gray-300 hover:bg-gray-50'
+                    : 'surface-1 text-text-primary border border-token hover:surface-2'
                 } ${plan.comingSoon ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {plan.cta}

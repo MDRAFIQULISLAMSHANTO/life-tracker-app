@@ -34,7 +34,7 @@ function GoogleLoginButton() {
         type="button"
         onClick={handleGoogleLogin}
         disabled={loading}
-        className="w-full py-3 border-2 border-gray-300 rounded-xl font-medium text-text-primary hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+        className="w-full py-3 border-2 border-token rounded-xl font-medium text-text-primary hover:surface-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path

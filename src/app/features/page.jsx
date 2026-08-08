@@ -61,7 +61,7 @@ export default function FeaturesPage() {
 
         <div className="space-y-12 sm:space-y-16">
           {modules.map((module, index) => (
-            <div key={index} className="rounded-2xl border border-neutral-200 bg-white p-8 sm:p-10 md:p-12 shadow-sm">
+            <div key={index} className="rounded-2xl border border-neutral-200 surface-1 p-8 sm:p-10 md:p-12 shadow-sm">
               <div className="flex flex-col md:flex-row gap-8">
                 <div className="flex-shrink-0">
                   <div className="text-6xl mb-4">{module.icon}</div>

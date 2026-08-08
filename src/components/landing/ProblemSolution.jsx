@@ -36,7 +36,7 @@ export default function ProblemSolution() {
       description: 'Everything is disconnected and hard to manage. Your life deserves better organization.',
       icon: Infinity,
       iconColor: 'text-indigo-600',
-      iconBg: 'bg-indigo-50',
+      iconBg: 'surface-accent',
       borderColor: 'border-indigo-100',
     },
   ]
@@ -94,10 +94,10 @@ export default function ProblemSolution() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Problems Section */}
         <div className="text-center mb-12 sm:mb-16">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-strong mb-4">
             The problems you face
           </h2>
-          <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg sm:text-xl text-muted max-w-2xl mx-auto">
             Managing your life shouldn't be this complicated
           </p>
         </div>
@@ -108,15 +108,15 @@ export default function ProblemSolution() {
             return (
               <div
                 key={index}
-                className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 hover:shadow-md transition-shadow duration-200"
+                className="surface-1 border border-token rounded-xl p-6 sm:p-8 hover:shadow-md transition-shadow duration-200"
               >
                 <div className={`w-14 h-14 ${problem.iconBg} border ${problem.borderColor} rounded-lg flex items-center justify-center mb-4`}>
                   <IconComponent className={`w-7 h-7 ${problem.iconColor}`} />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">
+                <h3 className="text-xl sm:text-2xl font-bold text-strong mb-3">
                   {problem.title}
                 </h3>
-                <p className="text-gray-600 leading-relaxed">{problem.description}</p>
+                <p className="text-muted leading-relaxed">{problem.description}</p>
               </div>
             )
           })}
@@ -126,17 +126,17 @@ export default function ProblemSolution() {
       {/* Solution Section - Full Width */}
       <div 
         ref={solutionRef}
-        className="relative w-full bg-white border-y border-gray-200 py-16 sm:py-20 lg:py-24"
+        className="relative w-full surface-1 border-y border-token py-16 sm:py-20 lg:py-24"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 mb-4 sm:mb-6 tracking-tight">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-strong mb-4 sm:mb-6 tracking-tight">
             One dashboard.{' '}
             <span className="block sm:inline">One flow.{' '}</span>
             <span className="text-indigo-600">
               One system.
             </span>
           </h2>
-          <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl lg:text-2xl text-muted max-w-3xl mx-auto leading-relaxed">
             Livio brings everything together in a simple, focused interface that grows with you. Experience the power of unified life management.
           </p>
         </div>

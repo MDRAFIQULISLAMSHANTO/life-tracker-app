@@ -76,7 +76,9 @@ export function DashboardTodayProvider({ children }) {
   const seededCloudRef = useRef(false)
   const remoteReadyRef = useRef(false)
   const writeTimerRef = useRef(null)
-  const hydratedRef = useRef(false)
+  // Must be state, not a ref — a ref flips synchronously inside the load effect
+  // and lets the persist effect overwrite the cache with the empty initial state.
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
     stateRef.current = state
@@ -84,18 +86,18 @@ export function DashboardTodayProvider({ children }) {
 
   // Load the local cache after mount (post-hydration)
   useEffect(() => {
-    hydratedRef.current = true
     setState(loadFromStorage())
+    setHydrated(true)
   }, [])
 
   useEffect(() => {
-    if (!hydratedRef.current) return
+    if (!hydrated) return
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch {
       // ignore
     }
-  }, [state])
+  }, [state, hydrated])
 
   useEffect(() => {
     seededCloudRef.current = false

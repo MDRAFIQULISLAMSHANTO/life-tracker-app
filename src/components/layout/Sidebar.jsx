@@ -14,7 +14,9 @@ import {
   Settings,
   HelpCircle,
   X,
-  Activity,
+  Repeat,
+  Sparkles,
+  Moon,
   PieChart,
   Landmark,
 } from 'lucide-react'
@@ -35,12 +37,17 @@ const navGroups = [
     ],
   },
   {
-    label: 'More',
+    label: 'Growth',
     items: [
-      { icon: Activity, label: 'Trackers', path: '/dashboard/trackers' },
+      { icon: Sparkles, label: 'Growth', path: '/dashboard/growth' },
+      { icon: Repeat, label: 'Habits', path: '/dashboard/habits' },
       { icon: Target, label: 'Goals', path: '/dashboard/goals' },
-      { icon: FileText, label: 'Reports', path: '/dashboard/reports' },
+      { icon: Moon, label: 'Daily plan', path: '/dashboard/plan' },
     ],
+  },
+  {
+    label: 'More',
+    items: [{ icon: FileText, label: 'Reports', path: '/dashboard/reports' }],
   },
 ]
 
@@ -52,6 +59,9 @@ function Sidebar({ isOpen, onToggle }) {
       onToggle()
     }
   }
+
+  const isActivePath = (path) =>
+    path === '/dashboard' ? pathname === path : pathname === path || pathname.startsWith(`${path}/`)
 
   return (
     <>
@@ -73,8 +83,15 @@ function Sidebar({ isOpen, onToggle }) {
         `}
         style={{ borderColor: 'var(--card-border)' }}
       >
-        {/* Logo */}
-        <div className="flex items-center justify-between px-4 py-5 sm:px-5" style={{ borderBottom: '1px solid var(--card-border)' }}>
+        {/* Logo — top padding clears the notch when running standalone on iOS */}
+        <div
+          className="flex items-center justify-between px-4 sm:px-5"
+          style={{
+            borderBottom: '1px solid var(--card-border)',
+            paddingTop: 'max(1.25rem, env(safe-area-inset-top))',
+            paddingBottom: '1.25rem',
+          }}
+        >
           <Logo height={44} />
           <button
             type="button"
@@ -97,21 +114,20 @@ function Sidebar({ isOpen, onToggle }) {
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon
-                  const isActive = pathname === item.path
+                  const isActive = isActivePath(item.path)
                   return (
                     <Link
                       key={item.path}
                       href={item.path}
                       onClick={handleNavClick}
+                      aria-current={isActive ? 'page' : undefined}
                       className={`flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 active:scale-[0.98] ${
                         isActive ? 'nav-item-active' : 'nav-item-idle'
                       }`}
                     >
                       <Icon className="h-5 w-5 shrink-0" aria-hidden />
                       <span className="font-semibold text-sm">{item.label}</span>
-                      {isActive && (
-                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white/60" />
-                      )}
+                      {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} />}
                     </Link>
                   )
                 })}
@@ -121,7 +137,13 @@ function Sidebar({ isOpen, onToggle }) {
         </nav>
 
         {/* Bottom links */}
-        <div className="space-y-0.5 p-3 lg:p-4" style={{ borderTop: '1px solid var(--card-border)' }}>
+        <div
+          className="space-y-0.5 p-3 lg:p-4"
+          style={{
+            borderTop: '1px solid var(--card-border)',
+            paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
+          }}
+        >
           {[
             { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
             { icon: HelpCircle, label: 'Help', path: '/contact' },
@@ -132,6 +154,7 @@ function Sidebar({ isOpen, onToggle }) {
                 key={path}
                 href={path}
                 onClick={handleNavClick}
+                aria-current={isActive ? 'page' : undefined}
                 className={`flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 ${
                   isActive ? 'nav-item-active' : 'nav-item-idle'
                 }`}

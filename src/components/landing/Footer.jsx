@@ -7,6 +7,8 @@ const LINKS = [
   { href: '/features', label: 'Features' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/contact', label: 'Contact' },
+  { href: '/privacy', label: 'Privacy' },
+  { href: '/terms', label: 'Terms' },
   { href: '/login', label: 'Sign in' },
 ]
 
@@ -14,7 +16,7 @@ export default function Footer() {
   return (
     <footer
       className="py-10 sm:py-12"
-      style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}
+      style={{ borderTop: '1px solid var(--card-border)' }}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
@@ -23,7 +25,7 @@ export default function Footer() {
             <div className="mb-2">
               <Logo height={42} />
             </div>
-            <p className="text-xs max-w-xs leading-relaxed" style={{ color: '#94a3b8' }}>
+            <p className="text-xs max-w-xs leading-relaxed" style={{ color: 'var(--text-3)' }}>
               Personal finance and productivity. Fast on every device.
             </p>
           </div>
@@ -36,7 +38,7 @@ export default function Footer() {
                   <Link
                     href={href}
                     className="text-sm font-semibold transition-opacity hover:opacity-70"
-                    style={{ color: '#64748b' }}
+                    style={{ color: 'var(--text-2)' }}
                   >
                     {label}
                   </Link>
@@ -48,14 +50,14 @@ export default function Footer() {
 
         <div
           className="mt-8 pt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs"
-          style={{ borderTop: '1px solid rgba(0,0,0,0.06)', color: '#94a3b8' }}
+          style={{ borderTop: '1px solid var(--card-border)', color: 'var(--text-3)' }}
         >
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
             <p>© {new Date().getFullYear()} Livio — All rights reserved</p>
             <p>
               Designed &amp; built by{' '}
               <a href="https://www.rishanto.com" target="_blank" rel="noopener noreferrer"
-                className="font-bold transition-opacity hover:opacity-70" style={{ color: '#6366f1' }}>
+                className="font-bold transition-opacity hover:opacity-70" style={{ color: 'var(--accent)' }}>
                 Rishanto
               </a>
             </p>

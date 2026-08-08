@@ -10,19 +10,19 @@ import GoogleLoginButton from './GoogleLoginButton'
 const inputStyle = {
   width: '100%',
   padding: '12px 16px 12px 44px',
-  border: '1.5px solid #e2e8f0',
+  border: '1.5px solid var(--card-border)',
   borderRadius: 14,
   fontSize: 14,
-  color: '#1e293b',
-  background: '#f8fafc',
+  color: 'var(--text-1)',
+  background: 'var(--input-bg)',
   outline: 'none',
   transition: 'border-color 0.15s, box-shadow 0.15s',
 }
 
 const inputFocusStyle = {
-  borderColor: '#6366f1',
+  borderColor: 'var(--accent)',
   boxShadow: '0 0 0 3px rgba(99,102,241,0.12)',
-  background: '#fff',
+  background: 'var(--card-bg)',
 }
 
 function InputField({ id, type, value, onChange, placeholder, icon: Icon, disabled, showToggle, onToggle }) {
@@ -32,7 +32,7 @@ function InputField({ id, type, value, onChange, placeholder, icon: Icon, disabl
       <Icon
         style={{
           position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
-          width: 17, height: 17, color: focused ? '#6366f1' : '#94a3b8', transition: 'color 0.15s',
+          width: 17, height: 17, color: focused ? 'var(--accent)' : 'var(--text-3)', transition: 'color 0.15s',
         }}
       />
       <input
@@ -54,7 +54,7 @@ function InputField({ id, type, value, onChange, placeholder, icon: Icon, disabl
           style={{
             position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
             background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-            color: '#94a3b8', display: 'flex', alignItems: 'center',
+            color: 'var(--text-3)', display: 'flex', alignItems: 'center',
           }}
         >
           {type === 'password' ? <Eye style={{ width: 16, height: 16 }} /> : <EyeOff style={{ width: 16, height: 16 }} />}
@@ -98,7 +98,7 @@ function LoginForm() {
     <div className="space-y-5">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="email" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
+          <label htmlFor="email" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>
             Email
           </label>
           <InputField
@@ -109,7 +109,7 @@ function LoginForm() {
         </div>
 
         <div>
-          <label htmlFor="password" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
+          <label htmlFor="password" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>
             Password
           </label>
           <InputField
@@ -121,8 +121,8 @@ function LoginForm() {
         </div>
 
         {error && (
-          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12 }}>
-            <p style={{ fontSize: 13, color: '#dc2626' }}>{error}</p>
+          <div style={{ padding: '10px 14px', background: 'rgba(var(--danger-rgb),0.08)', border: '1px solid rgba(var(--danger-rgb),0.22)', borderRadius: 12 }}>
+            <p style={{ fontSize: 13, color: 'var(--danger)' }}>{error}</p>
           </div>
         )}
 
@@ -142,16 +142,16 @@ function LoginForm() {
       </form>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-        <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>or</span>
-        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+        <div style={{ flex: 1, height: 1, background: 'var(--card-border)' }} />
+        <span style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 500 }}>or</span>
+        <div style={{ flex: 1, height: 1, background: 'var(--card-border)' }} />
       </div>
 
       <GoogleLoginButton />
 
-      <p style={{ textAlign: 'center', fontSize: 13, color: '#64748b' }}>
+      <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-2)' }}>
         No account?{' '}
-        <Link href="/signup" style={{ color: '#6366f1', fontWeight: 700, textDecoration: 'none' }}>
+        <Link href="/signup" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
           Sign up
         </Link>
       </p>

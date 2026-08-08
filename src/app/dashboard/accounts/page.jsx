@@ -144,7 +144,7 @@ export default function AccountsPage() {
                 <p className="text-sm font-semibold text-white/80">{a.name}</p>
                 {isActive && (
                   <div className="mt-3 flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    <div className="w-1.5 h-1.5 rounded-full surface-1 animate-pulse" />
                     <span className="text-[10px] font-bold text-white/70 uppercase tracking-wider">Active</span>
                   </div>
                 )}

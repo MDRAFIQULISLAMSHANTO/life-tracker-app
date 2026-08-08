@@ -77,18 +77,18 @@ function TopBar({ onMenuClick }) {
             </div>
           )}
 
-          {/* Currency */}
+          {/* Currency — hidden on the narrowest phones, where the row gets tight */}
           <div
-            className="flex items-center px-3 py-1.5 rounded-xl text-xs font-bold tabular-nums"
+            className="hidden sm:flex items-center px-3 py-1.5 rounded-xl text-xs font-bold tabular-nums"
             style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-1)' }}
           >
             {getCurrencySymbol(currency)}
           </div>
 
-          {/* Dashboard button */}
+          {/* Dashboard button — the mobile tab bar already has Home */}
           <button
             onClick={() => router.push('/dashboard')}
-            className="flex items-center justify-center w-9 h-9 rounded-xl transition-all"
+            className="hidden lg:flex items-center justify-center w-9 h-9 rounded-xl transition-all"
             style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)', color: 'var(--text-2)' }}
             aria-label="Go to dashboard"
           >
