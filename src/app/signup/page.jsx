@@ -7,20 +7,21 @@ import AuthLayout from '../../components/auth/AuthLayout'
 import SignupForm from '../../components/auth/SignupForm'
 import FirebaseSetupNotice from '../../components/auth/FirebaseSetupNotice'
 
+// NEXT_PUBLIC_* values are inlined at build time, so this is known during the
+// first render. Deriving it in an effect made every visitor see a flash of the
+// "Firebase Setup Required" screen before the signup form appeared.
+const FIREBASE_READY = !!(
+  process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
+  process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN &&
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+)
+
 export default function SignupPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [firebaseReady, setFirebaseReady] = useState(false)
+  const firebaseReady = FIREBASE_READY
 
   useEffect(() => {
-    // Check if Firebase is configured
-    const hasFirebaseConfig = 
-      process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
-      process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN &&
-      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-
-    setFirebaseReady(hasFirebaseConfig)
-
     // Redirect authenticated users away from signup page
     if (!loading && user) {
       router.replace('/dashboard')

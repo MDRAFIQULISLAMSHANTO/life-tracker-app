@@ -2,8 +2,8 @@
 
 function FirebaseSetupNotice() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-background-card rounded-2xl shadow-card p-8">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-10">
+      <div className="max-w-md w-full min-w-0 bg-background-card rounded-2xl shadow-card p-6 sm:p-8">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-warning rounded-2xl mb-4">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,9 +28,11 @@ function FirebaseSetupNotice() {
             </ol>
           </div>
 
-          <div className="surface-2 p-4 rounded-xl">
+          {/* min-w-0 lets the pre actually shrink — without it the long unbroken
+              env lines force the card past the viewport on a 320px screen */}
+          <div className="surface-2 p-4 rounded-xl min-w-0">
             <p className="font-semibold text-text-primary mb-2">Example .env.local:</p>
-            <pre className="text-xs overflow-x-auto">
+            <pre className="scroll-touch max-w-full overflow-x-auto text-xs">
 {`NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
