@@ -18,7 +18,13 @@ const D = { daily: 'daily', weekly: 'weekly', custom: 'custom' }
 
 // ── Reference pages (read-only Notion content) ─────────────────────────────
 
-const REFERENCE = [
+/**
+ * Study / reference pages. These are no longer copied into each user's private
+ * growth document — a per-user copy can never be updated for anyone. They are
+ * seeded once into the shared `content/library/pages` collection (see
+ * /api/admin/seed-library) and read live from there by every account.
+ */
+export const REFERENCE = [
   {
     id: 'ref_morning_creed',
     slug: 'morning-creed',
@@ -629,7 +635,7 @@ export function buildOwnerSeed() {
     routines: ownerRoutines(),
     tracks: ownerTracks(),
     library: ownerLibrary(),
-    reference: REFERENCE,
+    // No `reference` here: study pages live in the shared content library now.
     weakAreas: [],
     // The user's current Next Day Plan answers, so the ritual starts pre-filled
     planDefaults: {
@@ -706,7 +712,6 @@ export function buildDefaultSeed() {
     ],
     tracks: [],
     library: [],
-    reference: [],
     weakAreas: [],
     planDefaults: { top3: ['', '', ''], focusBehavior: '', firstAction: '', energyWindow: '', sayNoTo: '' },
   }

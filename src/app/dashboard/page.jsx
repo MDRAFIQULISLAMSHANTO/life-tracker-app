@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Wallet, TrendingUp, TrendingDown, Percent } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import DailyQuoteCard from '../../components/dashboard/DailyQuoteCard'
 import SummaryCard from '../../components/dashboard/SummaryCard'
 import TodayEvents from '../../components/dashboard/TodayEvents'
 import TodayReminders from '../../components/dashboard/TodayReminders'
@@ -111,6 +112,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5 sm:space-y-6">
+
+      <DailyQuoteCard />
 
       {/* Row 1 — Hero + Stats */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">

@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from './AuthContext'
-import { subscribeUserPayloadDoc, writeUserPayloadDoc } from '../lib/firestoreUserSync'
+import { localCacheKey, subscribeUserPayloadDoc, writeUserPayloadDoc } from '../lib/firestoreUserSync'
 import { mergeOneTimeDemoToday, DEMO_TODAY_KEY } from '../lib/demoDashboardData'
 
 const STORAGE_KEY = 'livio_dashboard_today_v1'
@@ -44,10 +44,10 @@ function migrateLoadedState(parsed) {
   return { events, reminders, notes }
 }
 
-function loadFromStorage() {
+function loadFromStorage(uid) {
   if (typeof window === 'undefined') return emptyAgenda()
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(localCacheKey(STORAGE_KEY, uid))
     if (!raw) return emptyAgenda()
     return migrateLoadedState(JSON.parse(raw))
   } catch {
@@ -67,7 +67,8 @@ function normalizeRemotePayload(payload) {
 const DashboardTodayContext = createContext(null)
 
 export function DashboardTodayProvider({ children }) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const uid = user?.uid || null
   // Start empty so server HTML matches first client render — localStorage is
   // read after mount (below) to avoid React hydration error #418.
   const [state, setState] = useState(emptyAgenda)
@@ -76,45 +77,63 @@ export function DashboardTodayProvider({ children }) {
   const seededCloudRef = useRef(false)
   const remoteReadyRef = useRef(false)
   const writeTimerRef = useRef(null)
-  // Must be state, not a ref — a ref flips synchronously inside the load effect
-  // and lets the persist effect overwrite the cache with the empty initial state.
-  const [hydrated, setHydrated] = useState(false)
+  // Which account the in-memory state belongs to. Must be state, not a ref — a
+  // ref flips synchronously inside the load effect and lets the persist effect
+  // overwrite the cache with the empty initial state. `undefined` means "not
+  // hydrated yet"; `null` is a legitimate value (signed out).
+  const [hydratedUid, setHydratedUid] = useState(undefined)
 
   useEffect(() => {
     stateRef.current = state
   }, [state])
 
-  // Load the local cache after mount (post-hydration)
+  // Load the cache for the *current account*, after auth resolves. Re-runs on
+  // every sign-in/sign-out, so one account's data can never be shown — or
+  // written to the cloud — under another account on a shared browser.
   useEffect(() => {
-    setState(loadFromStorage())
-    setHydrated(true)
-  }, [])
+    if (authLoading) return
+    seededCloudRef.current = false
+    remoteReadyRef.current = false
+    applyingRemoteRef.current = false
+    if (writeTimerRef.current) {
+      clearTimeout(writeTimerRef.current)
+      writeTimerRef.current = null
+    }
+    const loaded = loadFromStorage(uid)
+    stateRef.current = loaded
+    setState(loaded)
+    setHydratedUid(uid)
+  }, [uid, authLoading])
 
   useEffect(() => {
-    if (!hydrated) return
+    // Never persist while the state still belongs to the previous account.
+    if (hydratedUid === undefined || hydratedUid !== uid) return
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      window.localStorage.setItem(localCacheKey(STORAGE_KEY, uid), JSON.stringify(state))
     } catch {
       // ignore
     }
-  }, [state, hydrated])
+  }, [state, uid, hydratedUid])
 
   useEffect(() => {
-    seededCloudRef.current = false
-    remoteReadyRef.current = false
-  }, [user?.uid])
-
-  useEffect(() => {
-    if (!user?.uid) return () => {}
+    if (!uid || hydratedUid !== uid) return () => {}
     const unsub = subscribeUserPayloadDoc({
-      userId: user.uid,
+      userId: uid,
       pathSegments: FS_PATH,
       onRemote: ({ exists, payload }) => {
         if (!exists) {
           remoteReadyRef.current = true
           if (!seededCloudRef.current) {
             seededCloudRef.current = true
-            writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
+            // Seed from an empty agenda, never from current state: this account
+            // has no cloud doc yet, and anything in memory could still belong to
+            // whoever used this browser last.
+            // Promote this device's local cache into the first cloud doc — the
+            // only migration path for events/reminders/notes that have so far
+            // lived in IndexedDB alone. Safe because this effect only attaches
+            // once `hydratedUid === uid`, so `stateRef.current` is guaranteed to
+            // be THIS account's cache, never the previous user's.
+            writeUserPayloadDoc(uid, FS_PATH, stateRef.current).catch(() => {})
           }
           return
         }
@@ -123,7 +142,7 @@ export function DashboardTodayProvider({ children }) {
           // A local edit is queued (newer) — don't revert it with this snapshot.
           if (writeTimerRef.current) return
           let next = normalizeRemotePayload(payload)
-          const demoKey = DEMO_TODAY_KEY(user?.uid)
+          const demoKey = DEMO_TODAY_KEY(uid)
           if (
             typeof window !== 'undefined' &&
             !localStorage.getItem(demoKey) &&
@@ -142,11 +161,11 @@ export function DashboardTodayProvider({ children }) {
       },
     })
     return unsub
-  }, [user?.uid])
+  }, [uid, hydratedUid])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (user?.uid) return
+    if (uid || hydratedUid !== null) return
     const demoKey = DEMO_TODAY_KEY(null)
     if (localStorage.getItem(demoKey)) return
     setState((prev) => {
@@ -154,10 +173,10 @@ export function DashboardTodayProvider({ children }) {
       localStorage.setItem(demoKey, '1')
       return mergeOneTimeDemoToday(prev)
     })
-  }, [user?.uid])
+  }, [uid, hydratedUid])
 
   useEffect(() => {
-    if (!user?.uid) return
+    if (!uid || hydratedUid !== uid) return
     if (applyingRemoteRef.current) {
       applyingRemoteRef.current = false
       return
@@ -168,22 +187,22 @@ export function DashboardTodayProvider({ children }) {
     if (writeTimerRef.current) clearTimeout(writeTimerRef.current)
     writeTimerRef.current = setTimeout(() => {
       writeTimerRef.current = null
-      writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
+      writeUserPayloadDoc(uid, FS_PATH, stateRef.current).catch(() => {})
     }, 450)
     return () => {
       if (writeTimerRef.current) clearTimeout(writeTimerRef.current)
     }
-  }, [state, user?.uid])
+  }, [state, uid, hydratedUid])
 
   // Flush pending write immediately when the tab/app backgrounds or closes —
   // mobile suspends timers aggressively, so the 450ms debounce can otherwise be lost
   useEffect(() => {
-    if (!user?.uid) return
+    if (!uid || hydratedUid !== uid) return
     const flush = () => {
       if (!writeTimerRef.current) return
       clearTimeout(writeTimerRef.current)
       writeTimerRef.current = null
-      writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
+      writeUserPayloadDoc(uid, FS_PATH, stateRef.current).catch(() => {})
     }
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flush()
@@ -194,7 +213,7 @@ export function DashboardTodayProvider({ children }) {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', flush)
     }
-  }, [user?.uid])
+  }, [uid, hydratedUid])
 
   const resetDashboardForMonth = useCallback((year, month1to12) => {
     const key = monthKeyFromParts(year, month1to12)

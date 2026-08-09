@@ -5,6 +5,7 @@ import Sidebar from '../../components/layout/Sidebar'
 import TopBar from '../../components/layout/TopBar'
 import MobileTabBar from '../../components/layout/MobileTabBar'
 import AiAdvisor from '../../components/chat/AiAdvisor'
+import { ContentProvider } from '../../context/ContentContext'
 import { DashboardTodayProvider } from '../../context/DashboardTodayContext'
 import { GrowthProvider } from '../../context/GrowthContext'
 import { QuickAddProvider } from '../../context/QuickAddContext'
@@ -24,6 +25,9 @@ export default function DashboardLayout({ children }) {
   return (
     <DashboardTodayProvider>
       <GrowthProvider>
+        {/* Shared live content (daily quote + study library) — dashboard only,
+            so the marketing pages don't open Firestore listeners. */}
+        <ContentProvider>
         <QuickAddProvider>
           <div className="app-shell-h flex overflow-hidden bg-light-gradient dark:bg-dark-gradient" style={{ minHeight: 0 }}>
             <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen((o) => !o)} />
@@ -44,6 +48,7 @@ export default function DashboardLayout({ children }) {
             <ReminderRunner />
           </div>
         </QuickAddProvider>
+        </ContentProvider>
       </GrowthProvider>
     </DashboardTodayProvider>
   )

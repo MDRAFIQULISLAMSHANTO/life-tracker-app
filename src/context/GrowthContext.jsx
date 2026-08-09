@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from './AuthContext'
-import { subscribeUserPayloadDoc, writeUserPayloadDoc } from '../lib/firestoreUserSync'
+import { localCacheKey, subscribeUserPayloadDoc, writeUserPayloadDoc } from '../lib/firestoreUserSync'
 import { isOwner } from '../lib/owner'
 import { buildDefaultSeed, buildOwnerSeed } from '../lib/growthSeed'
 import { addDays, isoWeekKey, todayKey } from '../lib/growthMath'
@@ -97,10 +97,10 @@ function normalize(raw) {
   }
 }
 
-function loadFromStorage() {
+function loadFromStorage(uid) {
   if (typeof window === 'undefined') return emptyGrowth()
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(localCacheKey(STORAGE_KEY, uid))
     if (!raw) return emptyGrowth()
     return normalize(JSON.parse(raw))
   } catch {
@@ -169,7 +169,7 @@ async function migrateLegacyTrackers(uid, state) {
     existingNames.add(name.toLowerCase())
 
     try {
-      const entries = (await getTrackerEntries(t.id)) || []
+      const entries = (await getTrackerEntries(t.id, uid)) || []
       for (const e of entries) {
         const key = String(e.date || '').slice(0, 10)
         if (!key) continue
@@ -189,7 +189,8 @@ async function migrateLegacyTrackers(uid, state) {
 const GrowthContext = createContext(null)
 
 export function GrowthProvider({ children }) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const uid = user?.uid || null
   // Start empty so the server HTML matches the first client render; the local
   // cache is read after mount (below) to avoid React hydration error #418.
   const [state, setState] = useState(emptyGrowth)
@@ -199,41 +200,51 @@ export function GrowthProvider({ children }) {
   const remoteReadyRef = useRef(false)
   const writeTimerRef = useRef(null)
   const migrationRunRef = useRef(false)
-  // Hydration must be state, not a ref: a ref flips synchronously inside the
-  // load effect, so the persist effect below would fire on the SAME pass while
-  // `state` is still the empty initial value and overwrite the cache with it.
-  // As state, both updates batch, so `hydrated` only turns true once the loaded
-  // value is committed.
-  const [hydrated, setHydrated] = useState(false)
+  // Which account the in-memory state belongs to. Must be state, not a ref: a
+  // ref flips synchronously inside the load effect, so the persist effect below
+  // would fire on the SAME pass while `state` is still the empty initial value
+  // and overwrite the cache with it. As state, both updates batch, so this only
+  // changes once the loaded value is committed. `undefined` means "not hydrated
+  // yet"; `null` is a real value (signed out).
+  const [hydratedUid, setHydratedUid] = useState(undefined)
 
   useEffect(() => {
     stateRef.current = state
   }, [state])
 
+  // Load the cache belonging to the *current account*, once auth has resolved.
+  // Re-runs on sign-in/sign-out so a second account on this browser never
+  // inherits the first account's habits, goals or logs.
   useEffect(() => {
-    setState(loadFromStorage())
-    setHydrated(true)
-  }, [])
-
-  useEffect(() => {
-    if (!hydrated) return
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-    } catch {
-      // quota — the cloud copy is still authoritative
-    }
-  }, [state, hydrated])
-
-  useEffect(() => {
+    if (authLoading) return
     seededCloudRef.current = false
     remoteReadyRef.current = false
     migrationRunRef.current = false
-  }, [user?.uid])
+    applyingRemoteRef.current = false
+    if (writeTimerRef.current) {
+      clearTimeout(writeTimerRef.current)
+      writeTimerRef.current = null
+    }
+    const loaded = loadFromStorage(uid)
+    stateRef.current = loaded
+    setState(loaded)
+    setHydratedUid(uid)
+  }, [uid, authLoading])
 
   useEffect(() => {
-    if (!user?.uid) return () => {}
+    // Never persist while the state still belongs to the previous account.
+    if (hydratedUid === undefined || hydratedUid !== uid) return
+    try {
+      window.localStorage.setItem(localCacheKey(STORAGE_KEY, uid), JSON.stringify(state))
+    } catch {
+      // quota — the cloud copy is still authoritative
+    }
+  }, [state, uid, hydratedUid])
+
+  useEffect(() => {
+    if (!uid || hydratedUid !== uid) return () => {}
     const unsub = subscribeUserPayloadDoc({
-      userId: user.uid,
+      userId: uid,
       pathSegments: FS_PATH,
       onRemote: ({ exists, payload }) => {
         if (!exists) {
@@ -241,9 +252,15 @@ export function GrowthProvider({ children }) {
           if (!seededCloudRef.current) {
             seededCloudRef.current = true
             const seed = isOwner(user) ? buildOwnerSeed() : buildDefaultSeed()
+            // Seed ON TOP of current state, which promotes this device's local
+            // cache into the first cloud doc — the only migration path for data
+            // that has so far lived in IndexedDB alone. Safe because this effect
+            // only attaches once `hydratedUid === uid`, so `stateRef.current` is
+            // guaranteed to be THIS account's cache, never the previous user's.
             const next = normalize({ ...stateRef.current, ...seed })
+            stateRef.current = next
             setState(next)
-            writeUserPayloadDoc(user.uid, FS_PATH, next).catch(() => {})
+            writeUserPayloadDoc(uid, FS_PATH, next).catch(() => {})
           }
           return
         }
@@ -265,25 +282,25 @@ export function GrowthProvider({ children }) {
       },
     })
     return unsub
-  }, [user?.uid, user?.email])
+  }, [uid, user?.email, hydratedUid])
 
   // One-time fold-in of the legacy trackers collection
   useEffect(() => {
-    if (!user?.uid || migrationRunRef.current) return
+    if (!uid || hydratedUid !== uid || migrationRunRef.current) return
     if (!remoteReadyRef.current) return
     if (state.migratedTrackers) return
     migrationRunRef.current = true
     let cancelled = false
-    migrateLegacyTrackers(user.uid, stateRef.current).then((next) => {
+    migrateLegacyTrackers(uid, stateRef.current).then((next) => {
       if (!cancelled && next) setState(normalize(next))
     })
     return () => {
       cancelled = true
     }
-  }, [user?.uid, state.migratedTrackers, state.seededWith])
+  }, [uid, hydratedUid, state.migratedTrackers, state.seededWith])
 
   useEffect(() => {
-    if (!user?.uid) return
+    if (!uid || hydratedUid !== uid) return
     if (applyingRemoteRef.current) {
       applyingRemoteRef.current = false
       return
@@ -294,22 +311,22 @@ export function GrowthProvider({ children }) {
     if (writeTimerRef.current) clearTimeout(writeTimerRef.current)
     writeTimerRef.current = setTimeout(() => {
       writeTimerRef.current = null
-      writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
+      writeUserPayloadDoc(uid, FS_PATH, stateRef.current).catch(() => {})
     }, 450)
     return () => {
       if (writeTimerRef.current) clearTimeout(writeTimerRef.current)
     }
-  }, [state, user?.uid])
+  }, [state, uid, hydratedUid])
 
   // Mobile suspends timers when the app backgrounds, so flush the debounce
   // immediately rather than losing the pending write.
   useEffect(() => {
-    if (!user?.uid) return
+    if (!uid || hydratedUid !== uid) return
     const flush = () => {
       if (!writeTimerRef.current) return
       clearTimeout(writeTimerRef.current)
       writeTimerRef.current = null
-      writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
+      writeUserPayloadDoc(uid, FS_PATH, stateRef.current).catch(() => {})
     }
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flush()
@@ -320,7 +337,7 @@ export function GrowthProvider({ children }) {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', flush)
     }
-  }, [user?.uid])
+  }, [uid, hydratedUid])
 
   // ── Habits ───────────────────────────────────────────────────────────────
 
@@ -595,7 +612,10 @@ export function GrowthProvider({ children }) {
       // Derived helpers used across pages
       activeHabits: state.habits.filter((h) => !h.archived).sort((a, b) => (a.order || 0) - (b.order || 0)),
       routine: state.routines[0] || null,
-      referenceBySlug: Object.fromEntries(state.reference.map((r) => [r.slug, r])),
+      // No `referenceBySlug` here any more: study pages moved to the shared
+      // content library (useContent), so they can be updated for everyone at
+      // once. `state.reference` is still normalized for old payloads, but
+      // nothing reads it.
       addHabit,
       updateHabit,
       deleteHabit,

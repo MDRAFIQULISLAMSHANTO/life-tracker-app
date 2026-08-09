@@ -142,7 +142,13 @@ export async function addTrackerEntry(trackerId, userId, entryData) {
   return local
 }
 
-export async function getTrackerEntries(trackerId) {
+/**
+ * The local fallback lists (`LS_TRACKERS_KEY` / `LS_ENTRIES_KEY`) are a single
+ * store shared by every account on this browser, so both read paths must filter
+ * by `userId` — otherwise the growth migration folds one account's legacy rows
+ * into another account's workspace.
+ */
+export async function getTrackerEntries(trackerId, userId) {
   const fs = await tryFirestore(async () => {
     const entriesRef = collection(db, 'tracker_entries')
     const q = query(entriesRef, where('trackerId', '==', trackerId))
@@ -154,6 +160,8 @@ export async function getTrackerEntries(trackerId) {
   if (!fs?.__fallback) return fs
 
   const all = lsGetAllEntries()
-  const filtered = all.filter((e) => e.trackerId === trackerId)
+  const filtered = all.filter(
+    (e) => e.trackerId === trackerId && (!userId || e.userId === userId)
+  )
   return filtered.sort((a, b) => new Date(b.date) - new Date(a.date))
 }

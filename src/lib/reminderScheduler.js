@@ -9,8 +9,18 @@
  */
 
 import { todayKey } from './growthMath'
+import { localCacheKey } from './firestoreUserSync'
 
-export const PREFS_KEY = 'livio_reminder_prefs_v1'
+const PREFS_KEY_BASE = 'livio_reminder_prefs_v1'
+
+/**
+ * Notification preferences are per-person, so they are namespaced by account
+ * like every other local cache — otherwise a second account on the same browser
+ * inherits the first account's quiet hours and reminder toggles.
+ */
+export function prefsKeyFor(uid) {
+  return localCacheKey(PREFS_KEY_BASE, uid)
+}
 
 export const DEFAULT_PREFS = {
   enabled: true,
@@ -20,20 +30,20 @@ export const DEFAULT_PREFS = {
   quietTo: '',
 }
 
-export function loadPrefs() {
+export function loadPrefs(uid) {
   if (typeof window === 'undefined') return DEFAULT_PREFS
   try {
-    const raw = localStorage.getItem(PREFS_KEY)
+    const raw = localStorage.getItem(prefsKeyFor(uid))
     return raw ? { ...DEFAULT_PREFS, ...JSON.parse(raw) } : DEFAULT_PREFS
   } catch {
     return DEFAULT_PREFS
   }
 }
 
-export function savePrefs(prefs) {
+export function savePrefs(prefs, uid) {
   if (typeof window === 'undefined') return
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ ...DEFAULT_PREFS, ...prefs }))
+    localStorage.setItem(prefsKeyFor(uid), JSON.stringify({ ...DEFAULT_PREFS, ...prefs }))
   } catch {
     // quota — prefs fall back to defaults next load
   }

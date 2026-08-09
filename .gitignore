@@ -38,3 +38,9 @@ next-env.d.ts
 
 # Local Claude Code tooling config
 .claude/settings.local.json
+
+# Playwright MCP session debris
+.playwright-mcp/
+
+# One-off design-audit screenshots
+audit-*.png

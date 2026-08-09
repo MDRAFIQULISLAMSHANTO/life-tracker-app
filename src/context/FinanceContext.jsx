@@ -4,8 +4,8 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { useAuth } from './AuthContext'
 import { CURRENCIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../utils/constants'
 import { isValidCurrencyCode } from '../utils/currencyOptions'
-import { subscribeUserPayloadDoc, writeUserPayloadDoc } from '../lib/firestoreUserSync'
-import { mergeOneTimeDemoFinance, DEMO_FINANCE_KEY } from '../lib/demoFinanceData'
+import { localCacheKey, subscribeUserPayloadDoc, writeUserPayloadDoc } from '../lib/firestoreUserSync'
+import { mergeOneTimeDemoFinance } from '../lib/demoFinanceData'
 
 const FinanceContext = createContext(null)
 
@@ -159,10 +159,10 @@ function normalizeFinancePayload(raw) {
   }
 }
 
-function loadFinanceFromStorage() {
+function loadFinanceFromStorage(uid) {
   if (typeof window === 'undefined') return emptyFinance()
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(localCacheKey(STORAGE_KEY, uid))
     if (!raw) return emptyFinance()
     const parsed = JSON.parse(raw)
     return normalizeFinancePayload(parsed)
@@ -181,7 +181,8 @@ export function transactionsInMonth(transactions, monthKey) {
 }
 
 export function FinanceProvider({ children }) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const uid = user?.uid || null
   // Start empty so the server-rendered HTML matches the first client render
   // (localStorage is read after mount, below) — avoids React hydration error #418.
   const [state, setState] = useState(emptyFinance)
@@ -190,47 +191,61 @@ export function FinanceProvider({ children }) {
   const seededCloudRef = useRef(false)
   const remoteReadyRef = useRef(false)
   const writeTimerRef = useRef(null)
-  // Must be state, not a ref. A ref flips synchronously inside the load effect,
-  // so the persist effect below ran on the same pass while `state` was still
-  // empty and wrote that over the cache — which StrictMode's second effect pass
-  // then read back as the real value.
-  const [hydrated, setHydrated] = useState(false)
+  // Which account the in-memory state belongs to. Must be state, not a ref: a
+  // ref flips synchronously inside the load effect, so the persist effect below
+  // ran on the same pass while `state` was still empty and wrote that over the
+  // cache — which StrictMode's second effect pass then read back as the real
+  // value. `undefined` means "not hydrated yet"; `null` means signed out.
+  const [hydratedUid, setHydratedUid] = useState(undefined)
 
   useEffect(() => {
     stateRef.current = state
   }, [state])
 
-  // Load the local cache after mount (post-hydration)
+  // Load the cache belonging to the *current account*, once auth has resolved.
+  // Re-runs on sign-in/sign-out so a second account on the same browser never
+  // starts from the first account's ledger.
   useEffect(() => {
-    setState(loadFinanceFromStorage())
-    setHydrated(true)
-  }, [])
+    if (authLoading) return
+    seededCloudRef.current = false
+    remoteReadyRef.current = false
+    applyingRemoteRef.current = false
+    if (writeTimerRef.current) {
+      clearTimeout(writeTimerRef.current)
+      writeTimerRef.current = null
+    }
+    const loaded = loadFinanceFromStorage(uid)
+    stateRef.current = loaded
+    setState(loaded)
+    setHydratedUid(uid)
+  }, [uid, authLoading])
 
   useEffect(() => {
-    if (!hydrated) return
+    // Never persist while the state still belongs to the previous account.
+    if (hydratedUid === undefined || hydratedUid !== uid) return
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      window.localStorage.setItem(localCacheKey(STORAGE_KEY, uid), JSON.stringify(state))
     } catch (e) {
       console.warn('Unable to persist finance state:', e)
     }
-  }, [state, hydrated])
+  }, [state, uid, hydratedUid])
 
   useEffect(() => {
-    seededCloudRef.current = false
-    remoteReadyRef.current = false
-  }, [user?.uid])
-
-  useEffect(() => {
-    if (!user?.uid) return () => {}
+    if (!uid || hydratedUid !== uid) return () => {}
     const unsub = subscribeUserPayloadDoc({
-      userId: user.uid,
+      userId: uid,
       pathSegments: FS_PATH,
       onRemote: ({ exists, payload }) => {
         if (!exists) {
           remoteReadyRef.current = true
           if (!seededCloudRef.current) {
             seededCloudRef.current = true
-            writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
+            // Promote this device's local cache into the first cloud doc — the
+            // only migration path for a ledger that has so far lived in
+            // IndexedDB alone. Safe because this effect only attaches once
+            // `hydratedUid === uid`, so `stateRef.current` is guaranteed to be
+            // THIS account's cache, never the previous user's.
+            writeUserPayloadDoc(uid, FS_PATH, stateRef.current).catch(() => {})
           }
           return
         }
@@ -248,11 +263,11 @@ export function FinanceProvider({ children }) {
       },
     })
     return unsub
-  }, [user?.uid])
+  }, [uid, hydratedUid])
 
 
   useEffect(() => {
-    if (!user?.uid) return
+    if (!uid || hydratedUid !== uid) return
     if (applyingRemoteRef.current) {
       applyingRemoteRef.current = false
       return
@@ -263,22 +278,22 @@ export function FinanceProvider({ children }) {
     if (writeTimerRef.current) clearTimeout(writeTimerRef.current)
     writeTimerRef.current = setTimeout(() => {
       writeTimerRef.current = null
-      writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
+      writeUserPayloadDoc(uid, FS_PATH, stateRef.current).catch(() => {})
     }, 450)
     return () => {
       if (writeTimerRef.current) clearTimeout(writeTimerRef.current)
     }
-  }, [state, user?.uid])
+  }, [state, uid, hydratedUid])
 
   // Flush pending write immediately when the tab/app backgrounds or closes —
   // mobile suspends timers aggressively, so the 450ms debounce can otherwise be lost
   useEffect(() => {
-    if (!user?.uid) return
+    if (!uid || hydratedUid !== uid) return
     const flush = () => {
       if (!writeTimerRef.current) return
       clearTimeout(writeTimerRef.current)
       writeTimerRef.current = null
-      writeUserPayloadDoc(user.uid, FS_PATH, stateRef.current).catch(() => {})
+      writeUserPayloadDoc(uid, FS_PATH, stateRef.current).catch(() => {})
     }
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flush()
@@ -289,7 +304,7 @@ export function FinanceProvider({ children }) {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', flush)
     }
-  }, [user?.uid])
+  }, [uid, hydratedUid])
 
   const api = useMemo(() => {
     const ledgerMonthKey = state.ledgerMonthKey || monthKeyFromDate(new Date())

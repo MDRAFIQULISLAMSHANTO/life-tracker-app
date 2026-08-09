@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Bell, BellOff, CheckCircle2 } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 import { DEFAULT_PREFS, loadPrefs, savePrefs, showNotification } from '../../lib/reminderScheduler'
 import { Button, Field, Input, Select } from '../ui'
 
@@ -22,6 +23,8 @@ function sendTestNotification() {
 }
 
 export default function NotificationSettings() {
+  const { user } = useAuth()
+  const uid = user?.uid || null
   const [permission, setPermission] = useState('default')
   const [supported, setSupported] = useState(true)
   const [prefs, setPrefs] = useState(DEFAULT_PREFS)
@@ -34,17 +37,17 @@ export default function NotificationSettings() {
     } else {
       setPermission(Notification.permission)
     }
-    setPrefs(loadPrefs())
+    setPrefs(loadPrefs(uid))
     setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent))
     setStandalone(
       !!window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches
     )
-  }, [])
+  }, [uid])
 
   const update = (patch) => {
     const next = { ...prefs, ...patch }
     setPrefs(next)
-    savePrefs(next)
+    savePrefs(next, uid)
     // Tell the running scheduler to re-read without waiting for a reload
     window.dispatchEvent(new Event('livio:reminder-prefs'))
   }

@@ -4,14 +4,15 @@ import { useMemo } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ArrowLeft, FileQuestion } from 'lucide-react'
-import { useGrowth } from '../../../../context/GrowthContext'
+import { useContent } from '../../../../context/ContentContext'
 import { renderMarkdown } from '../../../../lib/markdown'
 import { Button, Card, EmptyState } from '../../../../components/ui'
 
 export default function ReferencePage() {
   const { slug } = useParams()
-  const { referenceBySlug } = useGrowth()
-  const page = referenceBySlug[slug]
+  // Shared content — one live copy for every account, not a per-user snapshot.
+  const { pageBySlug } = useContent()
+  const page = pageBySlug[slug]
 
   const html = useMemo(() => (page ? renderMarkdown(page.markdown) : ''), [page])
 
@@ -22,7 +23,7 @@ export default function ReferencePage() {
         <EmptyState
           icon={FileQuestion}
           title="Page not found"
-          description="This reference page isn’t in your workspace."
+          description="This page isn’t in the study library — it may have been renamed or unpublished."
           action={
             <Link href="/dashboard/growth">
               <Button>Back to Growth</Button>

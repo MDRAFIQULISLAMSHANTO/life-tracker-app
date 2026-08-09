@@ -3,7 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useDashboardToday } from '../context/DashboardTodayContext'
 import { useGrowth } from '../context/GrowthContext'
-import { buildReminderItems, loadPrefs, PREFS_KEY, scheduleReminders } from '../lib/reminderScheduler'
+import { useAuth } from '../context/AuthContext'
+import {
+  buildReminderItems,
+  DEFAULT_PREFS,
+  loadPrefs,
+  prefsKeyFor,
+  scheduleReminders,
+} from '../lib/reminderScheduler'
 
 /**
  * Arms local notification timers for today's reminders and habit reminder
@@ -16,14 +23,18 @@ import { buildReminderItems, loadPrefs, PREFS_KEY, scheduleReminders } from '../
 export default function ReminderRunner() {
   const { reminders } = useDashboardToday()
   const { habits, habitLog } = useGrowth()
-  const [prefs, setPrefs] = useState(loadPrefs)
+  const { user } = useAuth()
+  const uid = user?.uid || null
+  const [prefs, setPrefs] = useState(DEFAULT_PREFS)
   const [tick, setTick] = useState(0)
 
-  // Pick up preference changes made in Settings (same tab and other tabs)
+  // Pick up preference changes made in Settings (same tab and other tabs), and
+  // re-read from scratch whenever the signed-in account changes.
   useEffect(() => {
-    const reload = () => setPrefs(loadPrefs())
+    const reload = () => setPrefs(loadPrefs(uid))
+    reload()
     const onStorage = (e) => {
-      if (!e.key || e.key === PREFS_KEY) reload()
+      if (!e.key || e.key === prefsKeyFor(uid)) reload()
     }
     window.addEventListener('storage', onStorage)
     window.addEventListener('livio:reminder-prefs', reload)
@@ -31,7 +42,7 @@ export default function ReminderRunner() {
       window.removeEventListener('storage', onStorage)
       window.removeEventListener('livio:reminder-prefs', reload)
     }
-  }, [])
+  }, [uid])
 
   useEffect(() => {
     const onVisible = () => {

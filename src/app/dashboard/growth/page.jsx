@@ -13,7 +13,9 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
+import { useContent } from '../../../context/ContentContext'
 import { useGrowth } from '../../../context/GrowthContext'
+import { isOwner } from '../../../lib/owner'
 import {
   currentStreak,
   dayCompletion,
@@ -33,7 +35,10 @@ import {
 
 export default function GrowthPage() {
   const { user, loading } = useAuth()
-  const { activeHabits, habitLog, goals, reference, seededWith } = useGrowth()
+  const { activeHabits, habitLog, goals, seededWith } = useGrowth()
+  // Study pages are shared content, not per-user data — everyone reads the same
+  // live copy, so an edit reaches every account without a re-seed or a reload.
+  const { pageGroups: referenceGroups } = useContent()
   const [editingHabit, setEditingHabit] = useState(null)
   const [habitSheet, setHabitSheet] = useState(false)
   const [triggerSheet, setTriggerSheet] = useState(false)
@@ -53,15 +58,6 @@ export default function GrowthPage() {
   }, [activeHabits, habitLog, today])
 
   const activeGoals = goals.filter((g) => g.status !== 'done' && !g.parentGoalId)
-  const referenceGroups = useMemo(() => {
-    const map = new Map()
-    reference.forEach((r) => {
-      const key = r.group || 'Reference'
-      if (!map.has(key)) map.set(key, [])
-      map.get(key).push(r)
-    })
-    return [...map.entries()]
-  }, [reference])
 
   if (loading) return null
   if (!user) return null
@@ -184,6 +180,15 @@ export default function GrowthPage() {
             <h2 className="text-lg font-extrabold tracking-tight" style={{ color: 'var(--text-1)' }}>
               The playbook
             </h2>
+            {isOwner(user) && (
+              <Link
+                href="/dashboard/admin/library"
+                className="ml-auto text-xs font-bold"
+                style={{ color: 'var(--accent)' }}
+              >
+                Edit library →
+              </Link>
+            )}
           </div>
           {referenceGroups.map(([group, items]) => (
             <div key={group}>
@@ -193,7 +198,7 @@ export default function GrowthPage() {
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {items.map((r) => (
                   <Link
-                    key={r.id}
+                    key={r.slug}
                     href={`/dashboard/growth/${r.slug}`}
                     className="flex items-center gap-3 rounded-2xl px-3.5 py-3 transition-transform active:scale-[0.98]"
                     style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}

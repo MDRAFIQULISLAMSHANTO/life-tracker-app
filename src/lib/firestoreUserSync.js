@@ -11,6 +11,19 @@ export function userDocRef(userId, ...pathSegments) {
 }
 
 /**
+ * Namespace a localStorage key by account.
+ *
+ * The cloud copy has always been per-uid, but the local cache used to be a
+ * single global key — so a second account signing in on the same browser read
+ * the first account's data, and (worse) could hand it to the first-write seed
+ * path and copy it into their own cloud doc. Every local cache of synced data
+ * must go through here.
+ */
+export function localCacheKey(baseKey, userId) {
+  return `${baseKey}::${userId || 'anon'}`
+}
+
+/**
  * @param {object} opts
  * @param {string} opts.userId
  * @param {string[]} opts.pathSegments e.g. ['liver', 'finance']
