@@ -1,5 +1,5 @@
 /**
- * One-time sample events / reminders / notes for empty dashboard agenda.
+ * One-time sample events / tasks / notes for an empty dashboard agenda.
  */
 
 export const DEMO_TODAY_KEY = (uid) => `livio_demo_today_${uid || 'anon'}`
@@ -16,14 +16,16 @@ export function mergeOneTimeDemoToday(base) {
         date: t,
       },
     ],
-    reminders: [
+    tasks: [
       {
-        id: 'demo_today_rem_1',
-        title: 'Pay rent reminder (demo)',
+        id: 'demo_today_task_1',
+        title: 'Pay rent (demo)',
         time: '09:00',
+        dueDate: t,
+        priority: 'normal',
+        notes: '',
         completed: false,
         link: '',
-        date: t,
       },
     ],
     notes: [

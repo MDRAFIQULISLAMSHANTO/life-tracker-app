@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ExternalLink, StickyNote, Plus, Trash2, X } from 'lucide-react'
+import { ExternalLink, StickyNote, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useDashboardToday } from '../../context/DashboardTodayContext'
 import { useFinance } from '../../context/FinanceContext'
 import { formatRelativeTime } from '../../utils/formatters'
@@ -14,8 +14,10 @@ function isValidHttpUrl(str) {
 
 export default function QuickNotes() {
   const { ledgerMonthKey } = useFinance()
-  const { notes, addNote, deleteNote } = useDashboardToday()
+  const { notes, addNote, updateNote, deleteNote } = useDashboardToday()
   const [open, setOpen] = useState(false)
+  // null = writing a new note; an id = editing that one
+  const [editingId, setEditingId] = useState(null)
   const [content, setContent] = useState('')
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [link, setLink] = useState('')
@@ -28,17 +30,31 @@ export default function QuickNotes() {
 
   const submit = (e) => {
     e.preventDefault()
-    const res = addNote({ content, link, date })
+    const res = editingId
+      ? updateNote(editingId, { content, link, date })
+      : addNote({ content, link, date })
     if (!res.ok) { setError(res.error || 'Failed'); return }
     setContent(''); setLink('')
     setDate(new Date().toISOString().slice(0, 10))
+    setEditingId(null)
     setOpen(false)
   }
 
   const openModal = () => {
     setError('')
+    setEditingId(null)
+    setContent(''); setLink('')
     const t = new Date().toISOString().slice(0, 10)
     setDate(t.slice(0, 7) === ledgerMonthKey ? t : `${ledgerMonthKey}-01`)
+    setOpen(true)
+  }
+
+  const openEdit = (note) => {
+    setError('')
+    setEditingId(note.id)
+    setContent(note.content || '')
+    setLink(note.link || '')
+    setDate(note.date || new Date().toISOString().slice(0, 10))
     setOpen(true)
   }
 
@@ -75,11 +91,16 @@ export default function QuickNotes() {
                     <ExternalLink className="w-2.5 h-2.5" /> Link
                   </a>
                 )}
-                <button type="button" onClick={() => deleteNote(note.id)}
-                  className="absolute top-2 right-2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ color: '#ef4444' }}>
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                  <button type="button" onClick={() => openEdit(note)} aria-label="Edit note"
+                    className="p-1 rounded" style={{ color: 'var(--text-2)' }}>
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                  <button type="button" onClick={() => deleteNote(note.id)} aria-label="Delete note"
+                    className="p-1 rounded" style={{ color: '#ef4444' }}>
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -99,7 +120,7 @@ export default function QuickNotes() {
           <button type="button" className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} aria-label="Close" onClick={() => setOpen(false)} />
           <div className="glass-modal relative w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-5">
-              <h4 className="text-base font-bold" style={{ color: 'var(--text-1)' }}>New Note</h4>
+              <h4 className="text-base font-bold" style={{ color: 'var(--text-1)' }}>{editingId ? 'Edit Note' : 'New Note'}</h4>
               <button type="button" onClick={() => setOpen(false)} className="p-1.5 rounded-xl" style={{ color: 'var(--text-2)' }}><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={submit} className="space-y-3">

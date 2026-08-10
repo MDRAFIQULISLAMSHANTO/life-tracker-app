@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Flame,
   Moon,
+  Repeat,
   Sparkles,
   Target,
   TrendingUp,
@@ -25,6 +26,7 @@ import {
 } from '../../../lib/growthMath'
 import { Button, Card, EmptyState, PageHeader, ProgressRing, StatTile } from '../../../components/ui'
 import { HabitFormSheet, HabitRow } from '../../../components/growth/HabitBits'
+import { GoalFormSheet } from '../../../components/growth/GoalBits'
 import {
   DailyReviewForm,
   RoutineBlocks,
@@ -43,6 +45,7 @@ export default function GrowthPage() {
   const [habitSheet, setHabitSheet] = useState(false)
   const [triggerSheet, setTriggerSheet] = useState(false)
   const [weeklySheet, setWeeklySheet] = useState(false)
+  const [goalSheet, setGoalSheet] = useState(false)
 
   const today = todayKey()
   const completion = useMemo(() => dayCompletion(activeHabits, habitLog, today), [activeHabits, habitLog, today])
@@ -70,6 +73,20 @@ export default function GrowthPage() {
         icon={Sparkles}
         actions={
           <>
+            <Button variant="secondary" size="sm" onClick={() => setHabitSheet(true)}>
+              <Repeat className="h-4 w-4" />
+              New habit
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setGoalSheet(true)}>
+              <Target className="h-4 w-4" />
+              New goal
+            </Button>
+            <Link href="/dashboard/plan">
+              <Button variant="secondary" size="sm">
+                <Moon className="h-4 w-4" />
+                Plan tomorrow
+              </Button>
+            </Link>
             <Button variant="secondary" size="sm" onClick={() => setTriggerSheet(true)}>
               <ClipboardList className="h-4 w-4" />
               Log trigger
@@ -262,6 +279,7 @@ export default function GrowthPage() {
           setEditingHabit(null)
         }}
       />
+      <GoalFormSheet open={goalSheet} onClose={() => setGoalSheet(false)} />
       <TriggerLogSheet open={triggerSheet} onClose={() => setTriggerSheet(false)} />
       <WeeklyReviewSheet open={weeklySheet} onClose={() => setWeeklySheet(false)} />
     </div>

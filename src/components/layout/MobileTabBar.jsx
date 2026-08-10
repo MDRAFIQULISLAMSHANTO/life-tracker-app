@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   ArrowLeftRight,
   LayoutDashboard,
+  ListChecks,
   Moon,
   Plus,
   Sparkles,
@@ -19,6 +20,7 @@ import { Button, Field, Input, Select, Sheet, Textarea } from '../ui'
 
 const TABS = [
   { href: '/dashboard', label: 'Home', Icon: LayoutDashboard },
+  { href: '/dashboard/tasks', label: 'Tasks', Icon: ListChecks },
   { href: '/dashboard/expenses', label: 'Money', Icon: Wallet },
   { href: '/dashboard/growth', label: 'Growth', Icon: Sparkles },
   { href: '/dashboard/plan', label: 'Plan', Icon: Moon },

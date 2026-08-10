@@ -19,12 +19,16 @@ import {
   Moon,
   PieChart,
   Landmark,
+  ListChecks,
 } from 'lucide-react'
 
 const navGroups = [
   {
     label: 'Overview',
-    items: [{ icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' }],
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+      { icon: ListChecks, label: 'Tasks', path: '/dashboard/tasks' },
+    ],
   },
   {
     label: 'Money',

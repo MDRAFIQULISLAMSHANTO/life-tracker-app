@@ -21,27 +21,52 @@ function monthKeyFromParts(year, month1to12) {
   return `${year}-${String(month1to12).padStart(2, '0')}`
 }
 
+export const TASK_PRIORITIES = ['low', 'normal', 'high']
+
 const emptyAgenda = () => ({
   events: [],
-  reminders: [],
+  tasks: [],
   notes: [],
 })
+
+/**
+ * Tasks used to be "reminders": title + time + date + done. They are now the
+ * single to-do list, so `date` became `dueDate` (the deadline) and `time` stayed
+ * as the optional moment to send the notification. Old payloads are read from
+ * either shape, so a device still running the previous build loses nothing.
+ */
+function migrateTask(r, fallbackDate) {
+  return {
+    id: r.id,
+    title: r.title || '',
+    dueDate: r.dueDate || r.date || fallbackDate,
+    time: r.time || '',
+    priority: TASK_PRIORITIES.includes(r.priority) ? r.priority : 'normal',
+    notes: r.notes || '',
+    link: r.link || '',
+    completed: !!r.completed,
+    createdAt: r.createdAt || null,
+  }
+}
 
 function migrateLoadedState(parsed) {
   const t = todayISODate()
   const events = Array.isArray(parsed.events)
     ? parsed.events.map((e) => ({ ...e, date: e.date || t }))
     : []
-  const reminders = Array.isArray(parsed.reminders)
-    ? parsed.reminders.map((r) => ({ ...r, date: r.date || t }))
-    : []
+  const rawTasks = Array.isArray(parsed.tasks)
+    ? parsed.tasks
+    : Array.isArray(parsed.reminders)
+      ? parsed.reminders
+      : []
+  const tasks = rawTasks.map((r) => migrateTask(r, t))
   const notes = Array.isArray(parsed.notes)
     ? parsed.notes.map((n) => ({
         ...n,
         date: n.date || (n.createdAt ? String(n.createdAt).slice(0, 10) : t),
       }))
     : []
-  return { events, reminders, notes }
+  return { events, tasks, notes }
 }
 
 function loadFromStorage(uid) {
@@ -59,6 +84,7 @@ function normalizeRemotePayload(payload) {
   if (!payload || typeof payload !== 'object') return emptyAgenda()
   return migrateLoadedState({
     events: payload.events,
+    tasks: payload.tasks,
     reminders: payload.reminders,
     notes: payload.notes,
   })
@@ -125,11 +151,8 @@ export function DashboardTodayProvider({ children }) {
           remoteReadyRef.current = true
           if (!seededCloudRef.current) {
             seededCloudRef.current = true
-            // Seed from an empty agenda, never from current state: this account
-            // has no cloud doc yet, and anything in memory could still belong to
-            // whoever used this browser last.
             // Promote this device's local cache into the first cloud doc — the
-            // only migration path for events/reminders/notes that have so far
+            // only migration path for events/tasks/notes that have so far
             // lived in IndexedDB alone. Safe because this effect only attaches
             // once `hydratedUid === uid`, so `stateRef.current` is guaranteed to
             // be THIS account's cache, never the previous user's.
@@ -147,7 +170,7 @@ export function DashboardTodayProvider({ children }) {
             typeof window !== 'undefined' &&
             !localStorage.getItem(demoKey) &&
             !next.events?.length &&
-            !next.reminders?.length &&
+            !next.tasks?.length &&
             !next.notes?.length
           ) {
             next = mergeOneTimeDemoToday(next)
@@ -169,7 +192,7 @@ export function DashboardTodayProvider({ children }) {
     const demoKey = DEMO_TODAY_KEY(null)
     if (localStorage.getItem(demoKey)) return
     setState((prev) => {
-      if (prev.events?.length || prev.reminders?.length || prev.notes?.length) return prev
+      if (prev.events?.length || prev.tasks?.length || prev.notes?.length) return prev
       localStorage.setItem(demoKey, '1')
       return mergeOneTimeDemoToday(prev)
     })
@@ -219,7 +242,7 @@ export function DashboardTodayProvider({ children }) {
     const key = monthKeyFromParts(year, month1to12)
     setState((s) => ({
       events: s.events.filter((e) => !e.date || String(e.date).slice(0, 7) !== key),
-      reminders: s.reminders.filter((r) => !r.date || String(r.date).slice(0, 7) !== key),
+      tasks: s.tasks.filter((t) => !t.dueDate || String(t.dueDate).slice(0, 7) !== key),
       notes: s.notes.filter((n) => !n.date || String(n.date).slice(0, 7) !== key),
     }))
   }, [])
@@ -235,30 +258,85 @@ export function DashboardTodayProvider({ children }) {
     return { ok: true }
   }, [])
 
+  const updateEvent = useCallback((id, patch) => {
+    const title = patch?.title !== undefined ? String(patch.title).trim() : undefined
+    const time = patch?.time !== undefined ? String(patch.time).trim() : undefined
+    if (title === '' || time === '') return { ok: false, error: 'Title and time are required.' }
+    setState((s) => ({
+      ...s,
+      events: s.events.map((e) =>
+        e.id === id
+          ? {
+              ...e,
+              ...(title !== undefined ? { title } : null),
+              ...(time !== undefined ? { time } : null),
+              ...(patch?.link !== undefined ? { link: String(patch.link).trim() } : null),
+              ...(patch?.date !== undefined ? { date: String(patch.date).slice(0, 10) } : null),
+            }
+          : e
+      ),
+    }))
+    return { ok: true }
+  }, [])
+
   const deleteEvent = useCallback((id) => {
     setState((s) => ({ ...s, events: s.events.filter((e) => e.id !== id) }))
   }, [])
 
-  const addReminder = useCallback((payload) => {
+  // ── Tasks ────────────────────────────────────────────────────────────────
+
+  const addTask = useCallback((payload) => {
     const title = String(payload?.title || '').trim()
-    const time = String(payload?.time || '').trim()
-    if (!title || !time) return { ok: false, error: 'Title and time are required.' }
-    const link = String(payload?.link || '').trim()
-    const date = payload?.date ? String(payload.date).slice(0, 10) : todayISODate()
-    const item = { id: safeId(), title, time, completed: false, link: link || '', date }
-    setState((s) => ({ ...s, reminders: [item, ...s.reminders] }))
+    if (!title) return { ok: false, error: 'Title is required.' }
+    const item = {
+      id: safeId(),
+      title,
+      dueDate: payload?.dueDate ? String(payload.dueDate).slice(0, 10) : todayISODate(),
+      // Optional: without a time the task is a deadline only, never a notification.
+      time: String(payload?.time || '').trim(),
+      priority: TASK_PRIORITIES.includes(payload?.priority) ? payload.priority : 'normal',
+      notes: String(payload?.notes || '').trim(),
+      link: String(payload?.link || '').trim(),
+      completed: false,
+      createdAt: new Date().toISOString(),
+    }
+    setState((s) => ({ ...s, tasks: [item, ...s.tasks] }))
     return { ok: true }
   }, [])
 
-  const toggleReminder = useCallback((id) => {
+  const updateTask = useCallback((id, patch) => {
+    if (patch?.title !== undefined && !String(patch.title).trim()) {
+      return { ok: false, error: 'Title is required.' }
+    }
     setState((s) => ({
       ...s,
-      reminders: s.reminders.map((r) => (r.id === id ? { ...r, completed: !r.completed } : r)),
+      tasks: s.tasks.map((t) => {
+        if (t.id !== id) return t
+        const next = { ...t }
+        if (patch?.title !== undefined) next.title = String(patch.title).trim()
+        if (patch?.dueDate !== undefined) next.dueDate = String(patch.dueDate).slice(0, 10)
+        if (patch?.time !== undefined) next.time = String(patch.time).trim()
+        if (patch?.notes !== undefined) next.notes = String(patch.notes).trim()
+        if (patch?.link !== undefined) next.link = String(patch.link).trim()
+        if (patch?.completed !== undefined) next.completed = !!patch.completed
+        if (patch?.priority !== undefined && TASK_PRIORITIES.includes(patch.priority)) {
+          next.priority = patch.priority
+        }
+        return next
+      }),
+    }))
+    return { ok: true }
+  }, [])
+
+  const toggleTask = useCallback((id) => {
+    setState((s) => ({
+      ...s,
+      tasks: s.tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)),
     }))
   }, [])
 
-  const deleteReminder = useCallback((id) => {
-    setState((s) => ({ ...s, reminders: s.reminders.filter((r) => r.id !== id) }))
+  const deleteTask = useCallback((id) => {
+    setState((s) => ({ ...s, tasks: s.tasks.filter((t) => t.id !== id) }))
   }, [])
 
   const addNote = useCallback((payload) => {
@@ -278,6 +356,26 @@ export function DashboardTodayProvider({ children }) {
     return { ok: true }
   }, [])
 
+  const updateNote = useCallback((id, patch) => {
+    if (patch?.content !== undefined && !String(patch.content).trim()) {
+      return { ok: false, error: 'Note cannot be empty.' }
+    }
+    setState((s) => ({
+      ...s,
+      notes: s.notes.map((n) =>
+        n.id === id
+          ? {
+              ...n,
+              ...(patch?.content !== undefined ? { content: String(patch.content).trim() } : null),
+              ...(patch?.link !== undefined ? { link: String(patch.link).trim() } : null),
+              ...(patch?.date !== undefined ? { date: String(patch.date).slice(0, 10) } : null),
+            }
+          : n
+      ),
+    }))
+    return { ok: true }
+  }, [])
+
   const deleteNote = useCallback((id) => {
     setState((s) => ({ ...s, notes: s.notes.filter((n) => n.id !== id) }))
   }, [])
@@ -285,25 +383,31 @@ export function DashboardTodayProvider({ children }) {
   const value = useMemo(
     () => ({
       events: state.events,
-      reminders: state.reminders,
+      tasks: state.tasks,
       notes: state.notes,
       addEvent,
+      updateEvent,
       deleteEvent,
-      addReminder,
-      toggleReminder,
-      deleteReminder,
+      addTask,
+      updateTask,
+      toggleTask,
+      deleteTask,
       addNote,
+      updateNote,
       deleteNote,
       resetDashboardForMonth,
     }),
     [
       state,
       addEvent,
+      updateEvent,
       deleteEvent,
-      addReminder,
-      toggleReminder,
-      deleteReminder,
+      addTask,
+      updateTask,
+      toggleTask,
+      deleteTask,
       addNote,
+      updateNote,
       deleteNote,
       resetDashboardForMonth,
     ]

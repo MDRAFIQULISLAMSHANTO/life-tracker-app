@@ -174,23 +174,25 @@ export function scheduleReminders(items, prefs = DEFAULT_PREFS) {
   return () => timers.forEach(clearTimeout)
 }
 
-/** Map dashboard reminders + habit reminder times into scheduler items. */
-export function buildReminderItems({ reminders = [], habits = [], habitLog = {}, prefs = DEFAULT_PREFS }) {
+/** Map task deadlines + habit reminder times into scheduler items. */
+export function buildReminderItems({ tasks = [], habits = [], habitLog = {}, prefs = DEFAULT_PREFS }) {
   const dateKey = todayKey()
   const items = []
 
-  reminders.forEach((r) => {
-    // Field names must match DashboardTodayContext: `completed` and `title`
-    if (r.completed) return
-    if (r.date !== dateKey) return
+  tasks.forEach((t) => {
+    // Field names must match DashboardTodayContext: `completed`, `title`, `dueDate`.
+    if (t.completed) return
+    if (t.dueDate !== dateKey) return
+    // A task without a time is a deadline only — no notification to schedule.
+    if (!t.time) return
     items.push({
       kind: 'reminder',
-      id: r.id,
-      title: 'Livio reminder',
-      body: r.title,
-      time: r.time,
-      date: r.date,
-      url: '/dashboard',
+      id: t.id,
+      title: 'Livio task',
+      body: t.title,
+      time: t.time,
+      date: t.dueDate,
+      url: '/dashboard/tasks',
     })
   })
 

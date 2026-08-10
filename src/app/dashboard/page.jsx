@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext'
 import DailyQuoteCard from '../../components/dashboard/DailyQuoteCard'
 import SummaryCard from '../../components/dashboard/SummaryCard'
 import TodayEvents from '../../components/dashboard/TodayEvents'
-import TodayReminders from '../../components/dashboard/TodayReminders'
+import TasksCard from '../../components/dashboard/TasksCard'
 import QuickNotes from '../../components/dashboard/QuickNotes'
 import RecentActivity from '../../components/dashboard/RecentActivity'
 import { formatCurrency } from '../../utils/formatters'
@@ -149,7 +149,7 @@ export default function DashboardPage() {
       {/* Row 2 — Reminders / Events / Notes */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
         <TodayEvents />
-        <TodayReminders />
+        <TasksCard />
         <QuickNotes />
       </div>
 

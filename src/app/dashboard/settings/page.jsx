@@ -258,7 +258,7 @@ export default function SettingsPage() {
               <div>
                 <h3 className="font-bold" style={{ color: 'var(--text-1)' }}>Reset data for a month</h3>
                 <p className="text-sm mt-1" style={{ color: 'var(--text-2)' }}>
-                  Removes transactions, loans, budgets, events, reminders, and notes for the chosen month.
+                  Removes transactions, loans, budgets, events, tasks, and notes for the chosen month.
                 </p>
               </div>
             </div>

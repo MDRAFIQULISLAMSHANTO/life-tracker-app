@@ -13,7 +13,7 @@ import {
 } from '../lib/reminderScheduler'
 
 /**
- * Arms local notification timers for today's reminders and habit reminder
+ * Arms local notification timers for today's task deadlines and habit reminder
  * times. Mounted once inside the dashboard layout.
  *
  * Timers are re-armed whenever the app returns to the foreground — mobile
@@ -21,7 +21,7 @@ import {
  * have fired.
  */
 export default function ReminderRunner() {
-  const { reminders } = useDashboardToday()
+  const { tasks } = useDashboardToday()
   const { habits, habitLog } = useGrowth()
   const { user } = useAuth()
   const uid = user?.uid || null
@@ -60,9 +60,9 @@ export default function ReminderRunner() {
   }, [])
 
   useEffect(() => {
-    const items = buildReminderItems({ reminders, habits, habitLog, prefs })
+    const items = buildReminderItems({ tasks, habits, habitLog, prefs })
     return scheduleReminders(items, prefs)
-  }, [reminders, habits, habitLog, prefs, tick])
+  }, [tasks, habits, habitLog, prefs, tick])
 
   return null
 }

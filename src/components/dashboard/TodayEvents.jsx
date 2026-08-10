@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { CalendarDays, ExternalLink, Plus, Trash2, X } from 'lucide-react'
+import { CalendarDays, ExternalLink, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useDashboardToday } from '../../context/DashboardTodayContext'
 import { useFinance } from '../../context/FinanceContext'
 
@@ -26,8 +26,10 @@ const inputStyle = {
 
 export default function TodayEvents() {
   const { ledgerMonthKey } = useFinance()
-  const { events, addEvent, deleteEvent } = useDashboardToday()
+  const { events, addEvent, updateEvent, deleteEvent } = useDashboardToday()
   const [open, setOpen] = useState(false)
+  // null = creating a new event; an id = editing that one
+  const [editingId, setEditingId] = useState(null)
   const [title, setTitle] = useState('')
   const [time, setTime] = useState('')
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
@@ -41,17 +43,32 @@ export default function TodayEvents() {
 
   const submit = (e) => {
     e.preventDefault()
-    const res = addEvent({ title, time, link, date })
+    const res = editingId
+      ? updateEvent(editingId, { title, time, link, date })
+      : addEvent({ title, time, link, date })
     if (!res.ok) { setError(res.error || 'Failed'); return }
     setTitle(''); setTime(''); setLink('')
     setDate(new Date().toISOString().slice(0, 10))
+    setEditingId(null)
     setOpen(false)
   }
 
   const openModal = () => {
     setError('')
+    setEditingId(null)
+    setTitle(''); setTime(''); setLink('')
     const t = new Date().toISOString().slice(0, 10)
     setDate(t.slice(0, 7) === ledgerMonthKey ? t : `${ledgerMonthKey}-01`)
+    setOpen(true)
+  }
+
+  const openEdit = (ev) => {
+    setError('')
+    setEditingId(ev.id)
+    setTitle(ev.title || '')
+    setTime(ev.time || '')
+    setLink(ev.link || '')
+    setDate(ev.date || new Date().toISOString().slice(0, 10))
     setOpen(true)
   }
 
@@ -89,14 +106,26 @@ export default function TodayEvents() {
                     </a>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => deleteEvent(ev.id)}
-                  className="p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ color: '#ef4444' }}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(ev)}
+                    aria-label={`Edit ${ev.title}`}
+                    className="p-1 rounded-lg"
+                    style={{ color: 'var(--text-2)' }}
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteEvent(ev.id)}
+                    aria-label={`Delete ${ev.title}`}
+                    className="p-1 rounded-lg"
+                    style={{ color: '#ef4444' }}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -113,7 +142,7 @@ export default function TodayEvents() {
           <button type="button" className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} aria-label="Close" onClick={() => setOpen(false)} />
           <div className="glass-modal relative w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-5">
-              <h4 className="text-base font-bold" style={{ color: 'var(--text-1)' }}>New Event</h4>
+              <h4 className="text-base font-bold" style={{ color: 'var(--text-1)' }}>{editingId ? 'Edit Event' : 'New Event'}</h4>
               <button type="button" onClick={() => setOpen(false)} className="p-1.5 rounded-xl" style={{ color: 'var(--text-2)' }}>
                 <X className="w-4 h-4" />
               </button>
