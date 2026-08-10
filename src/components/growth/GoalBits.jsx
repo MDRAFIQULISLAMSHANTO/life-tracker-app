@@ -191,8 +191,15 @@ const KINDS = [
 ]
 
 export function GoalFormSheet({ open, onClose, goal }) {
-  const { upsertGoal, deleteGoal } = useGrowth()
+  const { upsertGoal, deleteGoal, goals } = useGrowth()
   const editing = !!goal
+
+  // Offer the categories already in use so they stay consistent enough to group
+  // by — free text still works, this is a suggestion list, not a constraint.
+  const usedCategories = useMemo(
+    () => [...new Set(goals.map((g) => (g.category || '').trim()).filter(Boolean))].sort(),
+    [goals]
+  )
 
   const [title, setTitle] = useState(goal?.title || '')
   const [why, setWhy] = useState(goal?.why || '')
@@ -275,8 +282,18 @@ export function GoalFormSheet({ open, onClose, goal }) {
           <Field label="Due date">
             <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </Field>
-          <Field label="Category">
-            <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Career" />
+          <Field label="Category" hint="Groups the goals page">
+            <Input
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="Career"
+              list="goal-categories"
+            />
+            <datalist id="goal-categories">
+              {usedCategories.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </Field>
         </div>
 

@@ -10,6 +10,9 @@ import { goalProgress } from '../../../lib/growthMath'
 import { Button, Card, EmptyState, Field, PageHeader, ProgressBar, Select, StatTile } from '../../../components/ui'
 import { GoalCard, GoalFormSheet, useFinanceLinkValue } from '../../../components/growth/GoalBits'
 
+/** Bucket label for goals with no category set. */
+const UNCATEGORISED = 'Uncategorised'
+
 const TRACK_STATUSES = [
   { value: 'not-started', label: '⚪ Not started' },
   { value: 'in-progress', label: '🟡 In progress' },
@@ -36,6 +39,22 @@ export default function GoalsPage() {
   }, [goals])
 
   const visible = rootGoals.filter((g) => (filter === 'all' ? true : (g.status || 'active') === filter))
+
+  // Cluster by category the way habits cluster by group. Uncategorised goals
+  // fall into one trailing bucket rather than vanishing.
+  const visibleByCategory = useMemo(() => {
+    const map = new Map()
+    visible.forEach((g) => {
+      const key = (g.category || '').trim() || UNCATEGORISED
+      if (!map.has(key)) map.set(key, [])
+      map.get(key).push(g)
+    })
+    return [...map.entries()].sort(([a], [b]) => {
+      if (a === UNCATEGORISED) return 1
+      if (b === UNCATEGORISED) return -1
+      return a.localeCompare(b)
+    })
+  }, [visible])
 
   const overall = useMemo(() => {
     if (!rootGoals.length) return 0
@@ -103,9 +122,26 @@ export default function GoalsPage() {
           action={<Button onClick={() => setSheetOpen(true)}>Add a goal</Button>}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {visible.map((g) => (
-            <GoalCard key={g.id} goal={g} subGoals={childrenOf.get(g.id) || []} />
+        <div className="space-y-5">
+          {visibleByCategory.map(([category, items]) => (
+            <div key={category}>
+              <div className="mb-2 flex items-baseline gap-2">
+                <h3
+                  className="text-[10px] font-bold uppercase tracking-widest"
+                  style={{ color: 'var(--text-3)' }}
+                >
+                  {category}
+                </h3>
+                <span className="text-[10px] font-semibold" style={{ color: 'var(--text-3)' }}>
+                  {items.length}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                {items.map((g) => (
+                  <GoalCard key={g.id} goal={g} subGoals={childrenOf.get(g.id) || []} />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
