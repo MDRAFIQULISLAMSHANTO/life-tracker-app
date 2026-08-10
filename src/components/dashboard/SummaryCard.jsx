@@ -1,8 +1,14 @@
 'use client'
 
 import { TrendingUp, TrendingDown } from 'lucide-react'
+import { usePrivacy } from '../../context/PrivacyContext'
 
-function SummaryCard({ title, value, change, changeType, icon: Icon }) {
+/**
+ * `sensitive` values are masked while the wallet's eye is closed, so the summary
+ * row can't leak the figures the wallet card is hiding.
+ */
+function SummaryCard({ title, value, change, changeType, icon: Icon, sensitive = true }) {
+  const { mask } = usePrivacy()
   const isPositive = changeType === 'positive'
   const isNegative = changeType === 'negative'
   const TrendIcon = isPositive ? TrendingUp : isNegative ? TrendingDown : null
@@ -30,7 +36,7 @@ function SummaryCard({ title, value, change, changeType, icon: Icon }) {
         )}
       </div>
       <p className="text-[10px] font-bold mb-1 uppercase tracking-widest" style={{ color: 'var(--text-3)' }}>{title}</p>
-      <p className="text-base sm:text-lg font-extrabold tabular-nums tracking-tight truncate" style={{ color: 'var(--text-1)' }}>{value}</p>
+      <p className="text-base sm:text-lg font-extrabold tabular-nums tracking-tight truncate" style={{ color: 'var(--text-1)' }}>{sensitive ? mask(value) : value}</p>
     </div>
   )
 }

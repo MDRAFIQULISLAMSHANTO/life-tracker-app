@@ -2,6 +2,7 @@
 
 import { ArrowDownCircle, ArrowUpCircle, FileText, Calendar, ArrowLeftRight } from 'lucide-react'
 import { formatCurrency } from '../../utils/formatters'
+import { MASK, usePrivacy } from '../../context/PrivacyContext'
 import { useFinance } from '../../context/FinanceContext'
 
 const CONFIG = {
@@ -14,6 +15,7 @@ const CONFIG = {
 
 function RecentActivityItem({ activity }) {
   const { currency } = useFinance()
+  const { revealed } = usePrivacy()
   const cfg = CONFIG[activity.type] || CONFIG.note
   const { Icon } = cfg
 
@@ -44,8 +46,7 @@ function RecentActivityItem({ activity }) {
           className="text-sm font-bold tabular-nums shrink-0"
           style={{ color: activity.amount >= 0 ? '#22c55e' : '#ef4444' }}
         >
-          {activity.amount >= 0 ? '+' : ''}
-          {formatCurrency(Math.abs(activity.amount), currency)}
+          {revealed ? `${activity.amount >= 0 ? '+' : ''}${formatCurrency(Math.abs(activity.amount), currency)}` : MASK}
         </span>
       )}
     </div>

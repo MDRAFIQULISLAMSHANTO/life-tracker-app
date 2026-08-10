@@ -14,6 +14,7 @@ import QuickNotes from '../../components/dashboard/QuickNotes'
 import RecentActivity from '../../components/dashboard/RecentActivity'
 import { formatCurrency } from '../../utils/formatters'
 import { useFinance } from '../../context/FinanceContext'
+import { usePrivacy } from '../../context/PrivacyContext'
 import WalletCard from '../../components/dashboard/WalletCard'
 
 const ExpenseDonutChart = dynamic(() => import('../../components/charts/ExpenseDonutChart'), {
@@ -55,6 +56,7 @@ export default function DashboardPage() {
     monthIncome, monthExpense, monthNet, totalBalance, accountBalances,
     expenseByCategory, budgetRowsFull, transactions,
   } = useFinance()
+  const { revealed } = usePrivacy()
   const statsRef = useRef(null)
   const chartsRef = useRef(null)
 
@@ -153,16 +155,26 @@ export default function DashboardPage() {
         <QuickNotes />
       </div>
 
-      {/* Row 3 — Charts */}
-      <div ref={chartsRef} className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
-        <DailyTrendChart data={dailyTrendData} />
-        <ExpenseDonutChart data={expenseData} />
-      </div>
+      {/* Rows 3-4 — Charts. Their axes and tooltips print exact figures, so the
+          wallet's eye blurs them too rather than leaving a hole in the guard. */}
+      <div
+        aria-hidden={!revealed}
+        style={{
+          filter: revealed ? 'none' : 'blur(9px)',
+          pointerEvents: revealed ? 'auto' : 'none',
+          transition: 'filter 0.3s ease',
+        }}
+        className="space-y-5 sm:space-y-6"
+      >
+        <div ref={chartsRef} className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+          <DailyTrendChart data={dailyTrendData} />
+          <ExpenseDonutChart data={expenseData} />
+        </div>
 
-      {/* Row 4 — Budget vs Actual (all categories) */}
-      {budgetChartRows.length > 0 && (
-        <BudgetBarChart rows={budgetChartRows} currency={currency} />
-      )}
+        {budgetChartRows.length > 0 && (
+          <BudgetBarChart rows={budgetChartRows} currency={currency} />
+        )}
+      </div>
 
       {/* Row 5 — Recent Activity */}
       <RecentActivity activities={recentActivities} />

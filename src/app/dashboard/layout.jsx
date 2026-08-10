@@ -7,6 +7,7 @@ import MobileTabBar from '../../components/layout/MobileTabBar'
 import AiAdvisor from '../../components/chat/AiAdvisor'
 import { ContentProvider } from '../../context/ContentContext'
 import { DashboardTodayProvider } from '../../context/DashboardTodayContext'
+import { PrivacyProvider } from '../../context/PrivacyContext'
 import { GrowthProvider } from '../../context/GrowthContext'
 import { QuickAddProvider } from '../../context/QuickAddContext'
 import ReminderRunner from '../../components/ReminderRunner'
@@ -28,6 +29,7 @@ export default function DashboardLayout({ children }) {
         {/* Shared live content (daily quote + study library) — dashboard only,
             so the marketing pages don't open Firestore listeners. */}
         <ContentProvider>
+        <PrivacyProvider>
         <QuickAddProvider>
           <div className="app-shell-h flex overflow-hidden bg-light-gradient dark:bg-dark-gradient" style={{ minHeight: 0 }}>
             <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen((o) => !o)} />
@@ -48,6 +50,7 @@ export default function DashboardLayout({ children }) {
             <ReminderRunner />
           </div>
         </QuickAddProvider>
+        </PrivacyProvider>
         </ContentProvider>
       </GrowthProvider>
     </DashboardTodayProvider>

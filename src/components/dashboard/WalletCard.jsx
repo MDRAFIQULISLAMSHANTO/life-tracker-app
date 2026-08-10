@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { usePrivacy } from '../../context/PrivacyContext'
 
 const CARD_GRADIENTS = [
   'linear-gradient(105deg,#2fa83d,#44c055,#38b548)',
@@ -132,11 +133,13 @@ function stackHeight(n) { return n > 0 ? CARD_H + Math.max(0, n - 1) * (CARD_H -
 
 export default function WalletCard({ accountBalances, totalBalance, currency, formatCurrency, monthNet = 0, monthIncome = 0 }) {
   const [themeIdx,  setThemeIdx]  = useState(3)
-  const [revealed,  setRevealed]  = useState(false)
+  // Shared with the rest of the dashboard: one eye hides every figure.
+  const { revealed, setRevealed } = usePrivacy()
 
   const cardEls     = useRef([])   // refs to each card DOM node
   const stackRef    = useRef(null) // ref to card stack container (controls height)
   const revealedRef = useRef(false) // tracks revealed without stale closure
+  const animatingRef = useRef(false) // true while a reveal/hide tween is running
 
   // Keep ref in sync
   useEffect(() => { revealedRef.current = revealed }, [revealed])
@@ -162,19 +165,30 @@ export default function WalletCard({ accountBalances, totalBalance, currency, fo
   const savingsRate = monthIncome > 0 ? (monthNet / monthIncome) * 100 : 0
   const isPositive  = monthNet >= 0
 
-  // On mount / n change: collapse container to 0 height, hide cards
+  // Snap the stack to match `revealed` on mount, when the account count
+  // changes, and when the saved preference loads (which arrives a tick after
+  // mount — without this the cards would stay shut while the eye said "open").
+  // Skipped mid-toggle so it can't stomp on the animation below.
   useEffect(() => {
-    if (revealedRef.current) return
+    if (animatingRef.current) return
     import('gsap').then(({ gsap }) => {
-      if (stackRef.current) gsap.set(stackRef.current, { height: 0 })
       const cards = cardEls.current.filter(Boolean)
-      if (cards.length) gsap.set(cards, { y: hideY, opacity: 0 })
+      if (revealed) {
+        if (stackRef.current) gsap.set(stackRef.current, { height: stackHeight(n) })
+        if (cards.length) gsap.set(cards, { y: 0, opacity: 1 })
+      } else {
+        if (stackRef.current) gsap.set(stackRef.current, { height: 0 })
+        if (cards.length) gsap.set(cards, { y: hideY, opacity: 0 })
+      }
     }).catch(() => {})
-  }, [n, hideY])
+  }, [n, hideY, revealed])
 
   const handleToggle = () => {
     const cards = cardEls.current.filter(Boolean)
     if (!cards.length) return
+
+    animatingRef.current = true
+    setTimeout(() => { animatingRef.current = false }, 700)
 
     import('gsap').then(({ gsap }) => {
       if (!revealedRef.current) {
