@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from './AuthContext'
 import { localCacheKey, subscribeUserPayloadDoc, writeUserPayloadDoc } from '../lib/firestoreUserSync'
-import { mergeOneTimeDemoToday, DEMO_TODAY_KEY } from '../lib/demoDashboardData'
+import { mergeOneTimeDemoToday } from '../lib/demoDashboardData'
 
 const STORAGE_KEY = 'livio_dashboard_today_v1'
 const FS_PATH = ['liver', 'dashboardToday']
@@ -164,18 +164,7 @@ export function DashboardTodayProvider({ children }) {
         if (payload) {
           // A local edit is queued (newer) — don't revert it with this snapshot.
           if (writeTimerRef.current) return
-          let next = normalizeRemotePayload(payload)
-          const demoKey = DEMO_TODAY_KEY(uid)
-          if (
-            typeof window !== 'undefined' &&
-            !localStorage.getItem(demoKey) &&
-            !next.events?.length &&
-            !next.tasks?.length &&
-            !next.notes?.length
-          ) {
-            next = mergeOneTimeDemoToday(next)
-            localStorage.setItem(demoKey, '1')
-          }
+          const next = normalizeRemotePayload(payload)
           // Already in sync — skip needless re-render + flag churn.
           if (JSON.stringify(next) === JSON.stringify(stateRef.current)) return
           applyingRemoteRef.current = true
@@ -184,18 +173,6 @@ export function DashboardTodayProvider({ children }) {
       },
     })
     return unsub
-  }, [uid, hydratedUid])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (uid || hydratedUid !== null) return
-    const demoKey = DEMO_TODAY_KEY(null)
-    if (localStorage.getItem(demoKey)) return
-    setState((prev) => {
-      if (prev.events?.length || prev.tasks?.length || prev.notes?.length) return prev
-      localStorage.setItem(demoKey, '1')
-      return mergeOneTimeDemoToday(prev)
-    })
   }, [uid, hydratedUid])
 
   useEffect(() => {
@@ -356,6 +333,18 @@ export function DashboardTodayProvider({ children }) {
     return { ok: true }
   }, [])
 
+  /**
+   * Sample agenda rows, on request only.
+   *
+   * These used to be injected automatically into any empty account, so a new
+   * user's first job was deleting `(demo)` rows they never asked for. The
+   * finance module always had this as an explicit button; now this matches.
+   */
+  const loadDemoAgenda = useCallback(() => {
+    setState((prev) => mergeOneTimeDemoToday(prev))
+    return { ok: true }
+  }, [])
+
   const updateNote = useCallback((id, patch) => {
     if (patch?.content !== undefined && !String(patch.content).trim()) {
       return { ok: false, error: 'Note cannot be empty.' }
@@ -395,6 +384,7 @@ export function DashboardTodayProvider({ children }) {
       addNote,
       updateNote,
       deleteNote,
+      loadDemoAgenda,
       resetDashboardForMonth,
     }),
     [
@@ -409,6 +399,7 @@ export function DashboardTodayProvider({ children }) {
       addNote,
       updateNote,
       deleteNote,
+      loadDemoAgenda,
       resetDashboardForMonth,
     ]
   )

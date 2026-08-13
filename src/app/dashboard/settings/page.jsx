@@ -119,7 +119,7 @@ function LogoutButton() {
 export default function SettingsPage() {
   const { user, loading } = useAuth()
   const { currency, setCurrency, accounts, addAccount, renameAccount, deleteAccount, updateAccountBalance, expenseCategories, incomeCategories, otherCategories, addCategory, removeCategory, resetFinanceDataForMonth, resetAllFinanceToEmpty, loadDemoData } = useFinance()
-  const { resetDashboardForMonth } = useDashboardToday()
+  const { resetDashboardForMonth, loadDemoAgenda } = useDashboardToday()
 
   const [walletTheme, setWalletTheme] = useState(3)
   const [msg, setMsg] = useState('')
@@ -490,6 +490,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => {
                   loadDemoData()
+                  loadDemoAgenda()
                   setDemoConfirmOpen(false)
                   setMsg('Demo data loaded successfully.')
                   setTimeout(() => setMsg(''), 4000)

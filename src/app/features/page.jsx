@@ -47,21 +47,21 @@ export default function FeaturesPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen" style={{ background: 'var(--surface)' }}>
       <Navbar />
       <main className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <div className="mb-12 text-center sm:mb-16">
-          <h1 className="mb-3 text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl md:text-5xl">
+          <h1 className="mb-3 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl" style={{ color: 'var(--text-1)' }}>
             Features
           </h1>
-          <p className="mx-auto max-w-2xl text-base text-neutral-600 sm:text-lg">
+          <p className="mx-auto max-w-2xl text-base sm:text-lg" style={{ color: 'var(--text-2)' }}>
             Three powerful modules designed to work together seamlessly.
           </p>
         </div>
 
         <div className="space-y-12 sm:space-y-16">
           {modules.map((module, index) => (
-            <div key={index} className="rounded-2xl border border-neutral-200 surface-1 p-8 sm:p-10 md:p-12 shadow-sm">
+            <div key={index} className="rounded-2xl border surface-1 p-8 sm:p-10 md:p-12 shadow-sm" style={{ borderColor: 'var(--card-border)' }}>
               <div className="flex flex-col md:flex-row gap-8">
                 <div className="flex-shrink-0">
                   <div className="text-6xl mb-4">{module.icon}</div>

@@ -11,6 +11,7 @@ import { PrivacyProvider } from '../../context/PrivacyContext'
 import { GrowthProvider } from '../../context/GrowthContext'
 import { QuickAddProvider } from '../../context/QuickAddContext'
 import ReminderRunner from '../../components/ReminderRunner'
+import FirstRunSheet from '../../components/dashboard/FirstRunSheet'
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -48,6 +49,7 @@ export default function DashboardLayout({ children }) {
             <MobileTabBar />
             <AiAdvisor />
             <ReminderRunner />
+            <FirstRunSheet />
           </div>
         </QuickAddProvider>
         </PrivacyProvider>

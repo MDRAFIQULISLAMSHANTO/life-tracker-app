@@ -28,7 +28,10 @@ const FS_PATH = ['liver', 'finance']
 /** No demo transactions — real ledger starts empty */
 export function emptyFinance() {
   return {
+    // Placeholder only — the first-run flow asks. Anyone who reaches the
+    // dashboard without answering is handled by `onboarded` below.
     currency: CURRENCIES.BDT,
+    onboarded: false,
     ledgerMonthKey: monthKeyFromDate(new Date()),
     expenseCategories: [...EXPENSE_CATEGORIES],
     incomeCategories: [...INCOME_CATEGORIES, 'Savings transfer'],
@@ -156,6 +159,9 @@ function normalizeFinancePayload(raw) {
     transactions: Array.isArray(raw.transactions) ? raw.transactions : [],
     loans: Array.isArray(raw.loans) ? raw.loans.map(normalizeLoan).filter(Boolean) : [],
     budgetsByMonth: raw.budgetsByMonth && typeof raw.budgetsByMonth === 'object' ? raw.budgetsByMonth : {},
+    // An account that already has transactions predates the first-run flow —
+    // never interrupt it to ask questions it has effectively answered.
+    onboarded: raw.onboarded === true || (Array.isArray(raw.transactions) && raw.transactions.length > 0),
   }
 }
 
@@ -655,6 +661,28 @@ export function FinanceProvider({ children }) {
       return { ok: true }
     }
 
+    /**
+     * First-run answers. Sets the currency and any opening balances in one
+     * write, and flips `onboarded` so the sheet never returns.
+     */
+    const completeOnboarding = ({ currency: code, openingBalances } = {}) => {
+      setState((prev) => {
+        const next = { ...prev, onboarded: true }
+        if (isValidCurrencyCode(code)) next.currency = code.toUpperCase()
+        if (openingBalances && typeof openingBalances === 'object') {
+          next.accounts = prev.accounts.map((a) => {
+            const raw = openingBalances[a.id]
+            const amount = Number(raw)
+            return raw !== undefined && raw !== '' && Number.isFinite(amount)
+              ? { ...a, startingBalance: amount }
+              : a
+          })
+        }
+        return next
+      })
+      return { ok: true }
+    }
+
     /** Load demo data into current state (merges sample transactions/loans) */
     const loadDemoData = () => {
       setState((prev) => mergeOneTimeDemoFinance(prev))
@@ -663,6 +691,8 @@ export function FinanceProvider({ children }) {
 
     return {
       currency: state.currency,
+      onboarded: state.onboarded,
+      completeOnboarding,
       ledgerMonthKey,
       setLedgerMonthKey,
       shiftLedgerMonth,
