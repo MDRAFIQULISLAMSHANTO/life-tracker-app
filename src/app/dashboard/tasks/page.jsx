@@ -11,7 +11,7 @@ import {
   todayISO,
   useTaskCounts,
 } from '../../../components/dashboard/TaskBits'
-import { Button, Card, EmptyState, PageHeader, Select, StatTile } from '../../../components/ui'
+import { Button, Card, EmptyState, Input, PageHeader, Select, StatTile } from '../../../components/ui'
 
 const FILTERS = [
   { value: 'open', label: 'Open' },
@@ -24,7 +24,8 @@ const FILTERS = [
 
 export default function TasksPage() {
   const { user, loading } = useAuth()
-  const { tasks } = useDashboardToday()
+  const { tasks, addTask } = useDashboardToday()
+  const [quick, setQuick] = useState('')
   const [filter, setFilter] = useState('open')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -86,6 +87,33 @@ export default function TasksPage() {
           </Button>
         }
       />
+
+      {/* Type and hit enter — the common case shouldn't need a dialog. */}
+      <Card padded={false} style={{ padding: '0.6rem 0.75rem' }}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!quick.trim()) return
+            addTask({ title: quick, dueDate: todayISO() })
+            setQuick('')
+          }}
+          className="flex items-center gap-2"
+        >
+          <Plus className="ml-1 h-4 w-4 shrink-0" style={{ color: 'var(--text-3)' }} aria-hidden />
+          <Input
+            value={quick}
+            onChange={(e) => setQuick(e.target.value)}
+            placeholder="Add a task for today…"
+            aria-label="Quick add a task due today"
+            style={{ border: 'none', background: 'transparent', paddingLeft: 0 }}
+          />
+          {quick.trim() && (
+            <Button type="submit" size="sm">
+              Add
+            </Button>
+          )}
+        </form>
+      </Card>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatTile label="Open" value={counts.open} hint="not done yet" icon={ListChecks} />

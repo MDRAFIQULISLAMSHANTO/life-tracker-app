@@ -8,6 +8,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, ExternalLink, Pencil, Trash2 } from 'lucide-react'
 import { TASK_PRIORITIES, useDashboardToday } from '../../context/DashboardTodayContext'
+import { useGrowth } from '../../context/GrowthContext'
+import { todayKey, tomorrowKey } from '../../lib/growthMath'
 import { Button, Field, Input, Select, Sheet, Textarea } from '../ui'
 
 export const PRIORITY_META = {
@@ -158,9 +160,36 @@ export function TaskRow({ task, onEdit, compact = false }) {
   )
 }
 
+/**
+ * Put a task into a day's Top 3.
+ *
+ * The plan entry stores the task id rather than a copy of its title, so the two
+ * can't drift: renaming or ticking the task shows through in the plan, and the
+ * plan is never left holding a task that was deleted.
+ */
+export function useAddTaskToPlan() {
+  const { dailyPlan, setDailyPlan } = useGrowth()
+
+  return (taskId, dateKey) => {
+    const plan = dailyPlan[dateKey] || {}
+    const current = [0, 1, 2].map((i) => {
+      const raw = (plan.top3 || [])[i]
+      return typeof raw === 'string' ? { text: raw, done: false } : raw || { text: '', done: false }
+    })
+    if (current.some((slot) => slot.taskId === taskId)) return { ok: true, already: true }
+    const free = current.findIndex((slot) => !slot.taskId && !String(slot.text || '').trim())
+    if (free === -1) return { ok: false, error: 'That day already has three priorities.' }
+    current[free] = { text: '', done: false, taskId }
+    setDailyPlan(dateKey, { top3: current })
+    return { ok: true }
+  }
+}
+
 /** Create/edit sheet. Pass `task` to edit, omit it to create. */
 export function TaskFormSheet({ open, onClose, task, defaultDate }) {
   const { addTask, updateTask, deleteTask } = useDashboardToday()
+  const addToPlan = useAddTaskToPlan()
+  const [planWhen, setPlanWhen] = useState('none')
   const editing = !!task
 
   const [title, setTitle] = useState('')
@@ -181,6 +210,7 @@ export function TaskFormSheet({ open, onClose, task, defaultDate }) {
     setPriority(task?.priority || 'normal')
     setNotes(task?.notes || '')
     setLink(task?.link || '')
+    setPlanWhen('none')
     setError('')
   }, [open, task, defaultDate])
 
@@ -191,6 +221,14 @@ export function TaskFormSheet({ open, onClose, task, defaultDate }) {
     if (!res.ok) {
       setError(res.error || 'Could not save.')
       return
+    }
+    if (planWhen !== 'none') {
+      const id = editing ? task.id : res.task?.id
+      const planned = id && addToPlan(id, planWhen === 'today' ? todayKey() : tomorrowKey())
+      if (planned && !planned.ok) {
+        setError(planned.error)
+        return
+      }
     }
     onClose()
   }
@@ -215,6 +253,30 @@ export function TaskFormSheet({ open, onClose, task, defaultDate }) {
         <div className="grid grid-cols-2 gap-3">
           <Field label="Deadline">
             <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {[
+                { label: 'Today', value: todayISO() },
+                { label: 'Tomorrow', value: tomorrowKey() },
+                {
+                  label: 'Next week',
+                  value: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+                },
+              ].map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => setDueDate(chip.value)}
+                  className="rounded-lg px-2 py-1 text-[11px] font-bold"
+                  style={{
+                    background: dueDate === chip.value ? 'rgba(var(--accent-rgb),0.14)' : 'var(--input-bg)',
+                    color: dueDate === chip.value ? 'var(--accent)' : 'var(--text-2)',
+                    border: '1px solid var(--card-border)',
+                  }}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
           </Field>
           <Field label="Priority">
             <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
@@ -229,6 +291,17 @@ export function TaskFormSheet({ open, onClose, task, defaultDate }) {
 
         <Field label="Remind me at" hint="Optional — leave empty for a deadline with no notification">
           <Input value={time} onChange={(e) => setTime(e.target.value)} placeholder="5:00 PM" />
+        </Field>
+
+        <Field
+          label="Make it a priority"
+          hint="Puts it in that day's Top 3 on the Daily plan, linked to this task"
+        >
+          <Select value={planWhen} onChange={(e) => setPlanWhen(e.target.value)}>
+            <option value="none">Don't add to a plan</option>
+            <option value="today">Top 3 — today</option>
+            <option value="tomorrow">Top 3 — tomorrow</option>
+          </Select>
         </Field>
 
         <Field label="Notes">

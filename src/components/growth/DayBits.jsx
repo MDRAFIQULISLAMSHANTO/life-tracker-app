@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Check, Trash2 } from 'lucide-react'
+import { Check, ListChecks, Trash2, X } from 'lucide-react'
 import { useGrowth } from '../../context/GrowthContext'
+import { useDashboardToday } from '../../context/DashboardTodayContext'
 import { BEHAVIORS } from '../../lib/growthSeed'
 import { blocksForMode, isoWeekKey, routineMinutes, todayKey, weeklyFocusFor } from '../../lib/growthMath'
 import { Button, Card, Field, Input, SegmentedControl, Select, Sheet, Textarea } from '../ui'
@@ -105,21 +106,33 @@ export function RoutineBlocks({ dateKey = todayKey() }) {
 /** Next Day Plan ritual — Top 3, focus behaviour, first action, energy, say-no. */
 export function DailyPlanForm({ dateKey }) {
   const { dailyPlan, setDailyPlan, planDefaults } = useGrowth()
+  // A Top 3 slot can point at a real task instead of holding loose text. The
+  // task stays the single source of truth: its title and completion show
+  // through here, so the two can never disagree.
+  const { tasks, toggleTask } = useDashboardToday()
+  const taskById = (id) => tasks.find((t) => t.id === id) || null
   const plan = dailyPlan[dateKey] || {}
 
   const top3 = plan.top3 || planDefaults.top3 || ['', '', '']
 
   const setTop = (i, patch) => {
     const next = [0, 1, 2].map((idx) => {
-      const item = typeof top3[idx] === 'string' ? { text: top3[idx], done: false } : top3[idx] || { text: '', done: false }
-      return idx === i ? { ...item, ...patch } : item
+      const stored = typeof top3[idx] === 'string' ? { text: top3[idx], done: false } : top3[idx] || { text: '', done: false }
+      // Patch the STORED slot, not the resolved one, so a linked task's title
+      // is never copied into the plan as loose text.
+      return idx === i ? { ...stored, ...patch } : stored
     })
     setDailyPlan(dateKey, { top3: next })
   }
 
   const item = (i) => {
     const raw = top3[i]
-    return typeof raw === 'string' ? { text: raw, done: false } : raw || { text: '', done: false }
+    const base = typeof raw === 'string' ? { text: raw, done: false } : raw || { text: '', done: false }
+    if (!base.taskId) return base
+    const linked = taskById(base.taskId)
+    // The task was deleted — drop back to plain text rather than showing a ghost.
+    if (!linked) return { ...base, taskId: undefined }
+    return { ...base, text: linked.title, done: !!linked.completed, task: linked }
   }
 
   return (
@@ -141,7 +154,7 @@ export function DailyPlanForm({ dateKey }) {
               <div key={i} className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setTop(i, { done: !it.done })}
+                  onClick={() => (it.task ? toggleTask(it.task.id) : setTop(i, { done: !it.done }))}
                   aria-pressed={!!it.done}
                   aria-label={`Mark priority ${i + 1} done`}
                   className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
@@ -152,15 +165,42 @@ export function DailyPlanForm({ dateKey }) {
                 >
                   {it.done && <Check className="h-3.5 w-3.5 text-white" strokeWidth={3.5} />}
                 </button>
-                <Input
-                  value={it.text}
-                  onChange={(e) => setTop(i, { text: e.target.value })}
-                  placeholder={['Morning practice', 'Work on project', 'Learn English'][i]}
-                  style={{
-                    textDecoration: it.done ? 'line-through' : 'none',
-                    color: it.done ? 'var(--text-3)' : 'var(--text-1)',
-                  }}
-                />
+                {it.task ? (
+                  <div
+                    className="flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 py-2"
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}
+                  >
+                    <ListChecks className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--accent)' }} aria-hidden />
+                    <span
+                      className="min-w-0 flex-1 truncate text-sm font-semibold"
+                      style={{
+                        textDecoration: it.done ? 'line-through' : 'none',
+                        color: it.done ? 'var(--text-3)' : 'var(--text-1)',
+                      }}
+                    >
+                      {it.text}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setTop(i, { text: '', done: false, taskId: undefined })}
+                      aria-label="Unlink this task"
+                      className="shrink-0 rounded-lg p-1"
+                      style={{ color: 'var(--text-3)' }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <Input
+                    value={it.text}
+                    onChange={(e) => setTop(i, { text: e.target.value })}
+                    placeholder={['Morning practice', 'Work on project', 'Learn English'][i]}
+                    style={{
+                      textDecoration: it.done ? 'line-through' : 'none',
+                      color: it.done ? 'var(--text-3)' : 'var(--text-1)',
+                    }}
+                  />
+                )}
               </div>
             )
           })}

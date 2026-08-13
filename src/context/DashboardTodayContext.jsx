@@ -278,7 +278,9 @@ export function DashboardTodayProvider({ children }) {
       createdAt: new Date().toISOString(),
     }
     setState((s) => ({ ...s, tasks: [item, ...s.tasks] }))
-    return { ok: true }
+    // The created item comes back so callers can act on it — linking a brand
+    // new task to a daily plan needs its id.
+    return { ok: true, task: item }
   }, [])
 
   const updateTask = useCallback((id, patch) => {
