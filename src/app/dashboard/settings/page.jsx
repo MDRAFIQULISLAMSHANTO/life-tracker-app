@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { User, Wallet, RotateCcw, CalendarRange, Settings2, Smartphone, Download, CheckCircle2, CreditCard, Bell, LogOut, Palette, Database, FlaskConical, AlertTriangle } from 'lucide-react'
+import { User, Wallet, RotateCcw, CalendarRange, Settings2, Smartphone, Download, CheckCircle2, CreditCard, Bell, LogOut, Palette, Database, FlaskConical, AlertTriangle, FileJson, FileSpreadsheet, Trash2 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useFinance } from '../../../context/FinanceContext'
 import { useDashboardToday } from '../../../context/DashboardTodayContext'
+import { useGrowth } from '../../../context/GrowthContext'
+import { downloadAccountExport, downloadTransactionsCsv } from '../../../lib/exportData'
 import CategoryManager from '../../../components/finance/CategoryManager'
 import { LEATHER_THEMES } from '../../../components/dashboard/WalletCard'
 import AccountManager from '../../../components/finance/AccountManager'
@@ -117,13 +119,21 @@ function LogoutButton() {
 }
 
 export default function SettingsPage() {
-  const { user, loading } = useAuth()
+  const { user, loading, logout } = useAuth()
+  const router = useRouter()
   const { currency, setCurrency, accounts, addAccount, renameAccount, deleteAccount, updateAccountBalance, expenseCategories, incomeCategories, otherCategories, addCategory, removeCategory, resetFinanceDataForMonth, resetAllFinanceToEmpty, loadDemoData } = useFinance()
-  const { resetDashboardForMonth, loadDemoAgenda } = useDashboardToday()
+  const { resetDashboardForMonth, loadDemoAgenda, events, tasks, notes } = useDashboardToday()
+  // Full context objects, for the "download everything" export.
+  const growth = useGrowth()
+  const finance = useFinance()
 
   const [walletTheme, setWalletTheme] = useState(3)
   const [msg, setMsg] = useState('')
   const [currencyFilter, setCurrencyFilter] = useState('')
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const [resetOpen, setResetOpen] = useState(false)
   const [resetYear, setResetYear] = useState(new Date().getFullYear())
   const [resetMonth, setResetMonth] = useState(new Date().getMonth() + 1)
@@ -344,6 +354,70 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* Your data — export before you leave, and leaving properly */}
+        <section className={sectionClass} style={{ borderTop: '1px solid var(--card-border)' }}>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(var(--accent-rgb),0.1)' }}>
+              <Download className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-extrabold" style={{ color: 'var(--text-1)' }}>Your data</h2>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-2)' }}>Take a copy with you, or close the account for good</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <button
+              type="button"
+              onClick={() => {
+                downloadAccountExport({
+                  user,
+                  finance,
+                  agenda: { events, tasks, notes },
+                  growth,
+                })
+                setMsg('Export downloaded.')
+                setTimeout(() => setMsg(''), 4000)
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-opacity hover:opacity-80"
+              style={{ background: 'var(--input-bg)', color: 'var(--text-1)', border: '1px solid var(--card-border)' }}
+            >
+              <FileJson className="w-4 h-4" />
+              Download everything (JSON)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const res = downloadTransactionsCsv({ transactions: finance.transactions, currency })
+                setMsg(`Exported ${res.count} transaction(s).`)
+                setTimeout(() => setMsg(''), 4000)
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-opacity hover:opacity-80"
+              style={{ background: 'var(--input-bg)', color: 'var(--text-1)', border: '1px solid var(--card-border)' }}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Transactions (CSV)
+            </button>
+          </div>
+
+          <div className="pt-5" style={{ borderTop: '1px solid var(--card-border)' }}>
+            <p className="text-sm font-bold mb-1" style={{ color: 'var(--text-1)' }}>Delete this account</p>
+            <p className="text-xs mb-3 leading-relaxed" style={{ color: 'var(--text-2)' }}>
+              Removes your money, tasks, notes and growth data from the server, then deletes your
+              sign-in. This cannot be undone — download a copy first if you might want it.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setDeleteOpen(true); setDeleteConfirm(''); setDeleteError('') }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold min-h-[44px] transition-opacity hover:opacity-80"
+              style={{ background: 'rgba(220,38,38,0.08)', color: 'var(--danger, #dc2626)', border: '1px solid rgba(220,38,38,0.20)' }}
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete account
+            </button>
+          </div>
+        </section>
+
         {/* Database */}
         <section className={sectionClass} style={{ borderTop: '1px solid var(--card-border)' }}>
           <div className="flex items-center gap-3 mb-5">
@@ -391,6 +465,80 @@ export default function SettingsPage() {
           <LogoutButton />
         </section>
       </div>
+
+      {/* Delete account Modal — typed confirmation, because it is irreversible */}
+      {deleteOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <button type="button" className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Close" onClick={() => !deleting && setDeleteOpen(false)} />
+          <div className="relative w-full max-w-md rounded-3xl p-6 shadow-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--card-border)' }}>
+            <h3 className="text-lg font-extrabold mb-2" style={{ color: 'var(--text-1)' }}>Delete your account</h3>
+            <p className="text-sm mb-4 leading-relaxed" style={{ color: 'var(--text-2)' }}>
+              This permanently removes every transaction, task, note, habit and goal on this
+              account, then deletes your sign-in. It cannot be undone.
+            </p>
+            <label className="block text-xs font-bold mb-1.5" style={{ color: 'var(--text-2)' }}>
+              Type <span style={{ color: 'var(--danger, #dc2626)' }}>DELETE</span> to confirm
+            </label>
+            <input
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              className="glass-input mb-3"
+              placeholder="DELETE"
+              autoComplete="off"
+              disabled={deleting}
+            />
+            {deleteError && (
+              <p className="text-xs font-semibold mb-3" style={{ color: 'var(--danger, #dc2626)' }}>{deleteError}</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteOpen(false)}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold min-h-[44px]"
+                style={{ border: '1px solid var(--card-border)', color: 'var(--text-1)' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleting || deleteConfirm !== 'DELETE'}
+                onClick={async () => {
+                  setDeleting(true)
+                  setDeleteError('')
+                  try {
+                    const token = await user.getIdToken()
+                    const res = await fetch('/api/account', {
+                      method: 'DELETE',
+                      headers: { Authorization: `Bearer ${token}` },
+                    })
+                    const body = await res.json().catch(() => ({}))
+                    if (!res.ok) throw new Error(body?.error || 'Deletion failed.')
+                    // Local caches are namespaced per uid; clear this account's
+                    // so nothing lingers on a shared browser.
+                    try {
+                      Object.keys(localStorage)
+                        .filter((k) => k.includes(`::${user.uid}`))
+                        .forEach((k) => localStorage.removeItem(k))
+                    } catch {
+                      // non-fatal — the server copy is already gone
+                    }
+                    await logout()
+                    router.replace('/')
+                  } catch (err) {
+                    setDeleteError(err.message || 'Could not delete the account.')
+                    setDeleting(false)
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold min-h-[44px] disabled:opacity-50"
+                style={{ background: 'var(--danger, #dc2626)', color: '#fff' }}
+              >
+                {deleting ? 'Deleting…' : 'Delete forever'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reset month Modal */}
       {resetOpen && (
