@@ -2,9 +2,13 @@
 
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { formatCurrency } from '../../utils/formatters'
+import { useTheme } from '../../context/ThemeContext'
+import { moneyColors } from '../../lib/chartColors'
 import { useFinance } from '../../context/FinanceContext'
 
 function DailyTrendChart({ data = [] }) {
+  const { theme } = useTheme()
+  const C = moneyColors(theme)
   const { currency } = useFinance()
   const code = String(currency || 'USD').toUpperCase()
 
@@ -31,7 +35,7 @@ function DailyTrendChart({ data = [] }) {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-5 gap-2">
         <h3 className="text-base font-bold" style={{ color: 'var(--text-1)' }}>Monthly Cashflow</h3>
         <div className="flex items-center gap-4">
-          {[{ color: 'var(--accent)', label: 'Income' }, { color: '#ef4444', label: 'Expense' }].map(({ color, label }) => (
+          {[{ color: C.income, label: 'Income' }, { color: C.expense, label: 'Expense' }].map(({ color, label }) => (
             <div key={label} className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
               <span className="text-xs" style={{ color: 'var(--text-2)' }}>{label}</span>
@@ -44,12 +48,12 @@ function DailyTrendChart({ data = [] }) {
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
             <defs>
               <linearGradient id="gradIncome" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.25} />
-                <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+                <stop offset="0%" stopColor={C.income} stopOpacity={0.25} />
+                <stop offset="100%" stopColor={C.income} stopOpacity={0} />
               </linearGradient>
               <linearGradient id="gradExpense" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.2} />
-                <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
+                <stop offset="0%" stopColor={C.expense} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={C.expense} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" vertical={false} />
@@ -76,7 +80,7 @@ function DailyTrendChart({ data = [] }) {
               type="monotone"
               dataKey="income"
               name="Income"
-              stroke="var(--accent)"
+              stroke={C.income}
               strokeWidth={2}
               fill="url(#gradIncome)"
             />
@@ -84,7 +88,7 @@ function DailyTrendChart({ data = [] }) {
               type="monotone"
               dataKey="expense"
               name="Expense"
-              stroke="#ef4444"
+              stroke={C.expense}
               strokeWidth={2}
               fill="url(#gradExpense)"
             />

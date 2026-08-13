@@ -3,11 +3,20 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { formatCurrency } from '../../utils/formatters'
 import { useFinance } from '../../context/FinanceContext'
+import { useTheme } from '../../context/ThemeContext'
+import { foldToTopN, makeCategoryScale, otherColor } from '../../lib/chartColors'
 
-const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316']
+
 
 function ExpenseDonutChart({ data = [] }) {
-  const { currency } = useFinance()
+  const { theme } = useTheme()
+  const { currency, expenseCategories, otherCategories } = useFinance()
+  // Colours come from the master category list so the chart's own subset
+  // can change without repainting anything.
+  const scale = makeCategoryScale([...(expenseCategories || []), ...(otherCategories || [])], theme)
+  // Fold the long tail so the palette is never cycled.
+  const rows = foldToTopN(data, 7)
+  const colorFor = (row) => (row.__isOther ? otherColor(theme) : scale(row.name))
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -35,13 +44,13 @@ function ExpenseDonutChart({ data = [] }) {
           <span className="text-xs font-bold" style={{ color: 'var(--text-1)' }}>{formatCurrency(total, currency)}</span>
         </div>
       </div>
-      {data.length > 0 ? (
+      {rows.length > 0 ? (
         <div className="flex flex-col lg:flex-row items-center gap-6">
           <div className="w-full lg:w-1/2 flex justify-center">
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie
-                  data={data.map(item => ({ ...item, total }))}
+                  data={rows.map((item) => ({ ...item, total }))}
                   cx="50%"
                   cy="50%"
                   outerRadius={90}
@@ -50,8 +59,8 @@ function ExpenseDonutChart({ data = [] }) {
                   stroke="none"
                   paddingAngle={3}
                 >
-                  {data.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {rows.map((entry) => (
+                    <Cell key={`cell-${entry.name}`} fill={colorFor(entry)} />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
@@ -59,7 +68,7 @@ function ExpenseDonutChart({ data = [] }) {
             </ResponsiveContainer>
           </div>
           <div className="w-full lg:w-1/2 space-y-2">
-            {data.slice(0, 6).map((item, index) => {
+            {rows.map((item) => {
               const pct = total > 0 ? ((item.value / total) * 100).toFixed(1) : '0'
               return (
                 <div
@@ -68,7 +77,7 @@ function ExpenseDonutChart({ data = [] }) {
                   style={{ background: 'rgba(var(--accent-rgb),0.04)' }}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: colorFor(item) }} />
                     <span className="text-xs font-medium truncate" style={{ color: 'var(--text-1)' }}>{item.name}</span>
                   </div>
                   <div className="text-right shrink-0 ml-2">

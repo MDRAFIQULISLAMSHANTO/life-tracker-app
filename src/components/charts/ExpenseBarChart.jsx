@@ -2,21 +2,18 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { formatCurrency } from '../../utils/formatters'
+import { useTheme } from '../../context/ThemeContext'
+import { makeCategoryScale } from '../../lib/chartColors'
 import { useFinance } from '../../context/FinanceContext'
 
-const COLORS = [
-  '#4F46E5', // primary
-  '#10B981', // success
-  '#F59E0B', // warning
-  '#EF4444', // danger
-  '#8B5CF6', // purple
-  '#EC4899', // pink
-  '#06B6D4', // cyan
-]
 
 function ExpenseBarChart({ data = [] }) {
+  const { theme } = useTheme()
   // Sample data structure: [{ name: 'Food', value: 8500 }]
-  const { currency } = useFinance()
+  const { currency, expenseCategories, otherCategories } = useFinance()
+  // Colours come from the master category list so the chart's own subset
+  // can change without repainting anything.
+  const scale = makeCategoryScale([...(expenseCategories || []), ...(otherCategories || [])], theme)
   
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -72,7 +69,7 @@ function ExpenseBarChart({ data = [] }) {
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="value" radius={[8, 8, 0, 0]}>
                 {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${entry.name}`} fill={scale(entry.name)} />
                 ))}
               </Bar>
             </BarChart>
@@ -90,7 +87,7 @@ function ExpenseBarChart({ data = [] }) {
                   <div className="flex items-center space-x-2">
                     <div
                       className="w-4 h-4 rounded-full shadow-sm"
-                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      style={{ backgroundColor: scale(item.name) }}
                     />
                     <span className="text-sm font-medium text-text-primary">{item.name}</span>
                   </div>

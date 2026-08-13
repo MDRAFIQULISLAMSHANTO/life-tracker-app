@@ -2,6 +2,8 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
 import { formatCurrency } from '../../utils/formatters'
+import { useTheme } from '../../context/ThemeContext'
+import { budgetColors } from '../../lib/chartColors'
 
 const CustomTooltip = ({ active, payload, label, currency }) => {
   if (!active || !payload?.length) return null
@@ -19,6 +21,8 @@ const CustomTooltip = ({ active, payload, label, currency }) => {
 }
 
 export default function BudgetBarChart({ rows = [], currency }) {
+  const { theme } = useTheme()
+  const C = budgetColors(theme)
   const data = rows
     .filter((r) => r.budget > 0 || r.spent > 0)
     .map((r) => ({
@@ -47,10 +51,10 @@ export default function BudgetBarChart({ rows = [], currency }) {
           <YAxis tick={{ fontSize: 10, fill: 'var(--text-3)' }} axisLine={false} tickLine={false} width={40}
             tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
           <Tooltip content={<CustomTooltip currency={currency} />} cursor={{ fill: 'rgba(var(--accent-rgb),0.05)' }} />
-          <Bar dataKey="Budget" radius={[4, 4, 0, 0]} fill="rgba(var(--accent-rgb),0.5)" />
+          <Bar dataKey="Budget" radius={[4, 4, 0, 0]} fill={C.budget} fillOpacity={0.45} />
           <Bar dataKey="Spent" radius={[4, 4, 0, 0]}>
             {data.map((entry, i) => (
-              <Cell key={i} fill={entry.over ? 'var(--danger)' : 'var(--success)'} />
+              <Cell key={i} fill={entry.over ? 'var(--danger)' : C.spent} />
             ))}
           </Bar>
         </BarChart>
