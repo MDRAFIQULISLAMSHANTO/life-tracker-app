@@ -22,6 +22,62 @@ function monthKeyFromDate(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+/** Month arithmetic for recurring rules. */
+function addMonthKey(monthKey, delta) {
+  const [y, m] = String(monthKey).split('-').map(Number)
+  const d = new Date(y, m - 1 + delta, 1)
+  return monthKeyFromDate(d)
+}
+
+/** A rule due on the 31st still posts in February — on the 28th/29th. */
+function clampDayToMonth(monthKey, day) {
+  const [y, m] = String(monthKey).split('-').map(Number)
+  const lastDay = new Date(y, m, 0).getDate()
+  const safe = Math.min(Math.max(Number(day) || 1, 1), lastDay)
+  return `${monthKey}-${String(safe).padStart(2, '0')}`
+}
+
+export const RECURRING_MODES = ['auto', 'approve']
+
+function normalizeRecurring(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const amount = Math.round(Number(raw.amount || 0) * 100) / 100
+  if (!(amount > 0)) return null
+  return {
+    id: raw.id || safeId(),
+    type: raw.type === 'income' ? 'income' : 'expense',
+    amount,
+    category: String(raw.category || '').trim() || 'Other',
+    description: String(raw.description || '').trim(),
+    accountId: raw.accountId || null,
+    dayOfMonth: Math.min(Math.max(Number(raw.dayOfMonth) || 1, 1), 31),
+    // 'auto' posts itself; 'approve' waits for a tap. Chosen per rule.
+    mode: RECURRING_MODES.includes(raw.mode) ? raw.mode : 'approve',
+    startMonth: /^\d{4}-\d{2}$/.test(raw.startMonth) ? raw.startMonth : monthKeyFromDate(new Date()),
+    endMonth: /^\d{4}-\d{2}$/.test(raw.endMonth) ? raw.endMonth : '',
+    active: raw.active !== false,
+    // Months already dealt with, so nothing posts twice.
+    postedMonths: Array.isArray(raw.postedMonths) ? raw.postedMonths.filter(Boolean) : [],
+    skippedMonths: Array.isArray(raw.skippedMonths) ? raw.skippedMonths.filter(Boolean) : [],
+  }
+}
+
+/**
+ * Two devices can post the same rule for the same month before either sees the
+ * other's write. The month lists converge, but the transactions would not — so
+ * drop duplicates keyed on (rule, month) whenever a payload is read.
+ */
+function dedupeRecurringTx(transactions) {
+  const seen = new Set()
+  return transactions.filter((t) => {
+    if (!t?.sourceRecurringId || !t?.recurringMonth) return true
+    const key = `${t.sourceRecurringId}::${t.recurringMonth}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 const STORAGE_KEY = 'livio_finance_v1'
 const FS_PATH = ['liver', 'finance']
 
@@ -42,6 +98,7 @@ export function emptyFinance() {
     ],
     transactions: [],
     loans: [],
+    recurring: [],
     budgetsByMonth: {},
   }
 }
@@ -156,8 +213,9 @@ function normalizeFinancePayload(raw) {
       ? raw.otherCategories
       : base.otherCategories,
     accounts: Array.isArray(raw.accounts) && raw.accounts.length ? raw.accounts : base.accounts,
-    transactions: Array.isArray(raw.transactions) ? raw.transactions : [],
+    transactions: dedupeRecurringTx(Array.isArray(raw.transactions) ? raw.transactions : []),
     loans: Array.isArray(raw.loans) ? raw.loans.map(normalizeLoan).filter(Boolean) : [],
+    recurring: Array.isArray(raw.recurring) ? raw.recurring.map(normalizeRecurring).filter(Boolean) : [],
     budgetsByMonth: raw.budgetsByMonth && typeof raw.budgetsByMonth === 'object' ? raw.budgetsByMonth : {},
     // An account that already has transactions predates the first-run flow —
     // never interrupt it to ask questions it has effectively answered.
@@ -544,6 +602,122 @@ export function FinanceProvider({ children }) {
       return { ok: true, tx: next }
     }
 
+
+    // ── Recurring ──────────────────────────────────────────────────────────
+    //
+    // A rule describes something that happens every month (rent, salary, a
+    // subscription). Each rule chooses its own mode: `auto` posts itself the
+    // moment its month comes round, `approve` waits to be confirmed — so
+    // certain things like rent can be automatic while variable ones stay a
+    // deliberate act.
+
+    const currentMonth = monthKeyFromDate(new Date())
+
+    /** Months a rule still owes, oldest first, capped so a long-dormant rule can't flood the ledger. */
+    const dueMonthsFor = (rule, limit = 12) => {
+      if (!rule.active) return []
+      const out = []
+      let m = rule.startMonth
+      // Walk forward from the start month; stop at today or the rule's end.
+      while (m <= currentMonth && (!rule.endMonth || m <= rule.endMonth)) {
+        if (!rule.postedMonths.includes(m) && !rule.skippedMonths.includes(m)) out.push(m)
+        m = addMonthKey(m, 1)
+        if (out.length >= limit) break
+      }
+      return out
+    }
+
+    const buildRecurringTx = (rule, monthKey) => ({
+      id: safeId(),
+      type: rule.type,
+      amount: rule.amount,
+      category: rule.category,
+      description: rule.description || 'Recurring',
+      date: clampDayToMonth(monthKey, rule.dayOfMonth),
+      accountId: rule.accountId || state.accounts[0]?.id || null,
+      sourceRecurringId: rule.id,
+      recurringMonth: monthKey,
+    })
+
+    /** Everything waiting on a decision, flattened for the UI. */
+    const pendingRecurring = state.recurring
+      .filter((r) => r.active && r.mode === 'approve')
+      .flatMap((r) => dueMonthsFor(r).map((monthKey) => ({ rule: r, monthKey })))
+
+    /** Auto rules with months owed — posted by an effect, not during render. */
+    const autoRecurringDue = state.recurring
+      .filter((r) => r.active && r.mode === 'auto')
+      .flatMap((r) => dueMonthsFor(r).map((monthKey) => ({ rule: r, monthKey })))
+
+    const postRecurring = (ruleId, monthKey) => {
+      const rule = state.recurring.find((r) => r.id === ruleId)
+      if (!rule) return { ok: false, error: 'That recurring entry no longer exists.' }
+      if (rule.postedMonths.includes(monthKey)) return { ok: true, alreadyPosted: true }
+      const tx = buildRecurringTx(rule, monthKey)
+      setState((prev) => ({
+        ...prev,
+        transactions: [tx, ...prev.transactions],
+        recurring: prev.recurring.map((r) =>
+          r.id === ruleId ? { ...r, postedMonths: [...r.postedMonths, monthKey] } : r
+        ),
+      }))
+      return { ok: true, tx }
+    }
+
+    const skipRecurring = (ruleId, monthKey) => {
+      setState((prev) => ({
+        ...prev,
+        recurring: prev.recurring.map((r) =>
+          r.id === ruleId && !r.skippedMonths.includes(monthKey)
+            ? { ...r, skippedMonths: [...r.skippedMonths, monthKey] }
+            : r
+        ),
+      }))
+      return { ok: true }
+    }
+
+    /** Post every owed month for the auto rules in a single state update. */
+    const runAutoRecurring = () => {
+      if (!autoRecurringDue.length) return { ok: true, posted: 0 }
+      const txs = autoRecurringDue.map(({ rule, monthKey }) => buildRecurringTx(rule, monthKey))
+      const byRule = new Map()
+      autoRecurringDue.forEach(({ rule, monthKey }) => {
+        byRule.set(rule.id, [...(byRule.get(rule.id) || []), monthKey])
+      })
+      setState((prev) => ({
+        ...prev,
+        transactions: [...txs, ...prev.transactions],
+        recurring: prev.recurring.map((r) =>
+          byRule.has(r.id)
+            ? { ...r, postedMonths: [...r.postedMonths, ...byRule.get(r.id)] }
+            : r
+        ),
+      }))
+      return { ok: true, posted: txs.length }
+    }
+
+    const addRecurring = (payload) => {
+      const rule = normalizeRecurring({ ...payload, id: safeId() })
+      if (!rule) return { ok: false, error: 'Amount must be > 0.' }
+      setState((prev) => ({ ...prev, recurring: [rule, ...prev.recurring] }))
+      return { ok: true, rule }
+    }
+
+    const updateRecurring = (id, patch) => {
+      const existing = state.recurring.find((r) => r.id === id)
+      if (!existing) return { ok: false, error: 'That recurring entry no longer exists.' }
+      const merged = normalizeRecurring({ ...existing, ...patch, id })
+      if (!merged) return { ok: false, error: 'Amount must be > 0.' }
+      setState((prev) => ({ ...prev, recurring: prev.recurring.map((r) => (r.id === id ? merged : r)) }))
+      return { ok: true, rule: merged }
+    }
+
+    /** Deleting a rule leaves the entries it already posted — they really happened. */
+    const deleteRecurring = (id) => {
+      setState((prev) => ({ ...prev, recurring: prev.recurring.filter((r) => r.id !== id) }))
+      return { ok: true }
+    }
+
     const deleteTransaction = (id) => {
       setState((prev) => ({ ...prev, transactions: prev.transactions.filter((t) => t.id !== id) }))
       return { ok: true }
@@ -766,6 +940,15 @@ export function FinanceProvider({ children }) {
       addTransaction,
       updateTransaction,
       deleteTransaction,
+      recurring: state.recurring,
+      pendingRecurring,
+      autoRecurringDue,
+      addRecurring,
+      updateRecurring,
+      deleteRecurring,
+      postRecurring,
+      skipRecurring,
+      runAutoRecurring,
       importTransactionsFromRows,
       upsertLoan,
       addRepayment,
@@ -776,6 +959,20 @@ export function FinanceProvider({ children }) {
       loadDemoData,
     }
   }, [state])
+
+  // Auto recurring rules post themselves, but only once Firestore has confirmed
+  // what this account already has. Running before that would re-post months the
+  // cloud copy already recorded, on every device, every load.
+  //
+  // Depends on `state` rather than the due-count: when the remote snapshot
+  // arrives the count often stays the same (the local cache had the same rules),
+  // so a count-based dependency would never re-fire after the gate opened.
+  useEffect(() => {
+    if (!uid || hydratedUid !== uid) return
+    if (!remoteReadyRef.current) return
+    if (!api.autoRecurringDue.length) return
+    api.runAutoRecurring()
+  }, [state, uid, hydratedUid, api])
 
   return <FinanceContext.Provider value={api}>{children}</FinanceContext.Provider>
 }

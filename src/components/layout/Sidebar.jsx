@@ -20,6 +20,7 @@ import {
   PieChart,
   Landmark,
   ListChecks,
+  Repeat2,
 } from 'lucide-react'
 
 const navGroups = [
@@ -38,6 +39,7 @@ const navGroups = [
       { icon: TrendingDown, label: 'Expenses', path: '/dashboard/expenses' },
       { icon: Landmark, label: 'Loans', path: '/dashboard/loans' },
       { icon: PieChart, label: 'Budget', path: '/dashboard/budget' },
+      { icon: Repeat2, label: 'Recurring', path: '/dashboard/recurring' },
     ],
   },
   {
