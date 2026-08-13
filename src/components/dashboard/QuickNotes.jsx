@@ -3,8 +3,9 @@
 import { useMemo, useState } from 'react'
 import { ExternalLink, StickyNote, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useDashboardToday } from '../../context/DashboardTodayContext'
-import { useFinance } from '../../context/FinanceContext'
 import { formatRelativeTime } from '../../utils/formatters'
+
+const VISIBLE_LIMIT = 5
 
 function isValidHttpUrl(str) {
   if (!str) return false
@@ -13,7 +14,6 @@ function isValidHttpUrl(str) {
 }
 
 export default function QuickNotes() {
-  const { ledgerMonthKey } = useFinance()
   const { notes, addNote, updateNote, deleteNote } = useDashboardToday()
   const [open, setOpen] = useState(false)
   // null = writing a new note; an id = editing that one
@@ -23,9 +23,15 @@ export default function QuickNotes() {
   const [link, setLink] = useState('')
   const [error, setError] = useState('')
 
+  // Not filtered by the ledger month — that is a money control, and hiding
+  // notes when you review a different month's spending made no sense. Most
+  // recent first instead.
   const visible = useMemo(
-    () => notes.filter((n) => (n.date ? String(n.date).slice(0, 7) : '') === ledgerMonthKey),
-    [notes, ledgerMonthKey]
+    () =>
+      [...notes]
+        .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+        .slice(0, VISIBLE_LIMIT),
+    [notes]
   )
 
   const submit = (e) => {
@@ -44,8 +50,7 @@ export default function QuickNotes() {
     setError('')
     setEditingId(null)
     setContent(''); setLink('')
-    const t = new Date().toISOString().slice(0, 10)
-    setDate(t.slice(0, 7) === ledgerMonthKey ? t : `${ledgerMonthKey}-01`)
+    setDate(new Date().toISOString().slice(0, 10))
     setOpen(true)
   }
 
@@ -107,7 +112,7 @@ export default function QuickNotes() {
         ) : (
           <div className="flex flex-col items-center justify-center py-6 flex-1" style={{ color: 'var(--text-3)' }}>
             <StickyNote className="w-8 h-8 mb-2 opacity-40" />
-            <p className="text-xs mb-1">No notes this month</p>
+            <p className="text-xs mb-1">No notes yet</p>
             <button type="button" onClick={openModal} className="text-xs font-bold" style={{ color: 'var(--accent)' }}>
               Add first note →
             </button>

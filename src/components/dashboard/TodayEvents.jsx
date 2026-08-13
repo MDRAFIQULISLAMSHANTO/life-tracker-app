@@ -3,13 +3,14 @@
 import { useMemo, useState } from 'react'
 import { CalendarDays, ExternalLink, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useDashboardToday } from '../../context/DashboardTodayContext'
-import { useFinance } from '../../context/FinanceContext'
 
 function isValidHttpUrl(str) {
   if (!str) return false
   try { const u = new URL(str); return u.protocol === 'http:' || u.protocol === 'https:' }
   catch { return false }
 }
+
+const VISIBLE_LIMIT = 6
 
 const inputStyle = {
   background: 'var(--input-bg)',
@@ -25,7 +26,6 @@ const inputStyle = {
 }
 
 export default function TodayEvents() {
-  const { ledgerMonthKey } = useFinance()
   const { events, addEvent, updateEvent, deleteEvent } = useDashboardToday()
   const [open, setOpen] = useState(false)
   // null = creating a new event; an id = editing that one
@@ -36,10 +36,17 @@ export default function TodayEvents() {
   const [link, setLink] = useState('')
   const [error, setError] = useState('')
 
-  const visible = useMemo(
-    () => events.filter((e) => (e.date ? String(e.date).slice(0, 7) : '') === ledgerMonthKey),
-    [events, ledgerMonthKey]
-  )
+  // The ledger month is a MONEY control. It used to hide events and notes too,
+  // so reviewing last month's spending made your agenda disappear — while tasks,
+  // which never filtered this way, stayed put. One control, one meaning: events
+  // now show what is still ahead of you, regardless of the ledger month.
+  const visible = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    return events
+      .filter((e) => !e.date || e.date >= today)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+      .slice(0, VISIBLE_LIMIT)
+  }, [events])
 
   const submit = (e) => {
     e.preventDefault()
@@ -57,8 +64,7 @@ export default function TodayEvents() {
     setError('')
     setEditingId(null)
     setTitle(''); setTime(''); setLink('')
-    const t = new Date().toISOString().slice(0, 10)
-    setDate(t.slice(0, 7) === ledgerMonthKey ? t : `${ledgerMonthKey}-01`)
+    setDate(new Date().toISOString().slice(0, 10))
     setOpen(true)
   }
 
@@ -132,7 +138,7 @@ export default function TodayEvents() {
         ) : (
           <div className="flex flex-col items-center justify-center py-6 flex-1" style={{ color: 'var(--text-3)' }}>
             <CalendarDays className="w-8 h-8 mb-2 opacity-40" />
-            <p className="text-xs">No events this month</p>
+            <p className="text-xs">Nothing coming up</p>
           </div>
         )}
       </div>
