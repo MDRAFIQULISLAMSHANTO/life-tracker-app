@@ -380,11 +380,24 @@ export function Sheet({ open, onClose, title, children, footer, maxWidth = 520 }
   const panelRef = useRef(null)
   const restoreFocusRef = useRef(null)
 
+  // Held in a ref so the effect below does NOT depend on it.
+  //
+  // Every caller passes an inline arrow (`onClose={() => setOpen(false)}`), so
+  // its identity changes on every render of the parent — including the render
+  // caused by typing a single character into a field inside the sheet. With
+  // `onClose` in the dependency array, that re-ran the effect: the cleanup
+  // fired, restored focus to whatever opened the sheet, and the input lost the
+  // cursor after each keystroke.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
   useEffect(() => {
     if (!open) return undefined
     restoreFocusRef.current = document.activeElement
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose?.()
+      if (e.key === 'Escape') onCloseRef.current?.()
     }
     document.addEventListener('keydown', onKey)
     const prevOverflow = document.body.style.overflow
@@ -397,7 +410,7 @@ export function Sheet({ open, onClose, title, children, footer, maxWidth = 520 }
       document.body.style.overflow = prevOverflow
       restoreFocusRef.current?.focus?.()
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open || typeof document === 'undefined') return null
 
