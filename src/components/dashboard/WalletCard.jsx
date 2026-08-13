@@ -419,7 +419,7 @@ export default function WalletCard({ accountBalances, totalBalance, currency, fo
 
             {/* Action buttons */}
             <div style={{ display: 'flex', gap: 8 }}>
-              <Link href="/dashboard/income" style={{
+              <Link href="/dashboard/ledger" style={{
                 flex: 1, height: 42, borderRadius: 21,
                 background: theme.btnBg, border: `1px solid ${theme.btnBorder}`,
                 color: tc, fontSize: 13.5, fontWeight: 600,
@@ -443,7 +443,7 @@ export default function WalletCard({ accountBalances, totalBalance, currency, fo
                     stroke={tc} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </Link>
-              <Link href="/dashboard/expenses" style={{
+              <Link href="/dashboard/ledger" style={{
                 flex: 1, height: 42, borderRadius: 21,
                 background: theme.btnBg, border: `1px solid ${theme.btnBorder}`,
                 color: tc, fontSize: 13.5, fontWeight: 600,

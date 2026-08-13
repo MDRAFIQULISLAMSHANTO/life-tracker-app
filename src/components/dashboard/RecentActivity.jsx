@@ -9,7 +9,7 @@ function RecentActivity({ activities = [] }) {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold" style={{ color: 'var(--text-1)' }}>Recent Activity</h3>
         <Link
-          href="/dashboard/expenses"
+          href="/dashboard/ledger"
           className="text-xs font-bold transition-opacity hover:opacity-70"
           style={{ color: 'var(--accent)' }}
         >

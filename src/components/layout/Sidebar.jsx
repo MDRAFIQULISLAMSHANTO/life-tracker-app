@@ -21,6 +21,7 @@ import {
   Landmark,
   ListChecks,
   Repeat2,
+  ArrowLeftRight,
 } from 'lucide-react'
 
 const navGroups = [
@@ -35,8 +36,7 @@ const navGroups = [
     label: 'Money',
     items: [
       { icon: Wallet, label: 'Accounts', path: '/dashboard/accounts' },
-      { icon: TrendingUp, label: 'Income', path: '/dashboard/income' },
-      { icon: TrendingDown, label: 'Expenses', path: '/dashboard/expenses' },
+      { icon: ArrowLeftRight, label: 'Ledger', path: '/dashboard/ledger' },
       { icon: Landmark, label: 'Loans', path: '/dashboard/loans' },
       { icon: PieChart, label: 'Budget', path: '/dashboard/budget' },
       { icon: Repeat2, label: 'Recurring', path: '/dashboard/recurring' },
