@@ -376,6 +376,27 @@ export function Badge({ children, color = 'var(--accent)', bg }) {
  * return, scroll lock and a labelled dialog role — the hand-rolled sheets
  * scattered through the app did none of that.
  */
+/**
+ * Body scroll lock, counted rather than saved-and-restored.
+ *
+ * Each sheet used to snapshot `body.style.overflow` on open and write it back
+ * on close. Open a second sheet from inside the first and the snapshot is
+ * already "hidden", so closing them in the wrong order left the page
+ * permanently unscrollable — which reads as the whole app having frozen, with
+ * a restart the only way out. A depth counter cannot get stuck that way.
+ */
+let scrollLockDepth = 0
+
+function lockBodyScroll() {
+  scrollLockDepth += 1
+  document.body.style.overflow = 'hidden'
+}
+
+function unlockBodyScroll() {
+  scrollLockDepth = Math.max(0, scrollLockDepth - 1)
+  if (scrollLockDepth === 0) document.body.style.overflow = ''
+}
+
 export function Sheet({ open, onClose, title, children, footer, maxWidth = 520 }) {
   const panelRef = useRef(null)
   const restoreFocusRef = useRef(null)
@@ -400,14 +421,13 @@ export function Sheet({ open, onClose, title, children, footer, maxWidth = 520 }
       if (e.key === 'Escape') onCloseRef.current?.()
     }
     document.addEventListener('keydown', onKey)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    lockBodyScroll()
     // Move focus into the panel so screen readers and keyboards follow it
     const t = setTimeout(() => panelRef.current?.focus(), 30)
     return () => {
       clearTimeout(t)
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
+      unlockBodyScroll()
       restoreFocusRef.current?.focus?.()
     }
   }, [open])

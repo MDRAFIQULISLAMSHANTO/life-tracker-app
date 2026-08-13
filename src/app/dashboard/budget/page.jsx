@@ -69,7 +69,10 @@ export default function BudgetPage() {
         <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--card-border)' }}>
           <h2 className="text-base font-extrabold" style={{ color: 'var(--text-1)' }}>Set Budget per Category</h2>
         </div>
-        <div className="scroll-touch overflow-x-auto">
+        {/* Phones get cards below; the table needs five columns plus an input
+            and two buttons, which cannot fit a 360px screen without becoming a
+            horizontal-scrolling puzzle. */}
+        <div className="scroll-touch hidden overflow-x-auto sm:block">
           <table className="min-w-full text-sm">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--card-border)' }}>
@@ -141,6 +144,84 @@ export default function BudgetPage() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile: one card per category */}
+        <div className="flex flex-col gap-2 p-3 sm:hidden">
+          {displayRows.map((row) => {
+            const pct = row.budget > 0 ? Math.min((row.spent / row.budget) * 100, 100) : 0
+            const over = row.budget > 0 && row.spent > row.budget
+            const barColor = over ? 'var(--danger)' : pct >= 80 ? 'var(--warning)' : 'var(--success)'
+            const save = () => {
+              const raw = drafts[row.category] !== undefined ? drafts[row.category] : String(row.budget || '')
+              const num = parseFloat(String(raw).replace(',', '.'))
+              if (!Number.isFinite(num) || num < 0) { setMsg2('Enter a valid budget ≥ 0.', false); return }
+              setBudgetForCategory(ledgerMonthKey, row.category, num)
+              setDrafts((d) => { const n = { ...d }; delete n[row.category]; return n })
+              setMsg2('Budget saved.')
+            }
+            return (
+              <div
+                key={row.category}
+                className="rounded-2xl p-3"
+                style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="min-w-0 flex-1 truncate text-sm font-bold" style={{ color: 'var(--text-1)' }}>
+                    {row.category}
+                  </p>
+                  <p className="shrink-0 text-xs tabular-nums font-semibold"
+                    style={{ color: over ? 'var(--danger)' : 'var(--text-2)' }}>
+                    {formatCurrency(row.spent, currency)} spent
+                  </p>
+                </div>
+
+                {row.budget > 0 && (
+                  <div className="mt-2">
+                    <div className="progress-track">
+                      <div className="progress-fill" style={{ width: `${pct}%`, background: barColor }} />
+                    </div>
+                    <p className="mt-1 text-[10px] font-bold" style={{ color: barColor }}>
+                      {over ? 'Over budget' : `${Math.round(pct)}% of ${formatCurrency(row.budget, currency)}`}
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-2.5 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={row.draft}
+                    onChange={(e) => setDrafts((d) => ({ ...d, [row.category]: e.target.value }))}
+                    placeholder="Set a limit"
+                    aria-label={`Budget for ${row.category}`}
+                    className="glass-input min-h-[44px] flex-1"
+                  />
+                  <button type="button" onClick={save}
+                    className="accent-btn min-h-[44px] shrink-0 px-4 text-sm">
+                    Save
+                  </button>
+                  {row.budget > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearBudgetForCategory(ledgerMonthKey, row.category)
+                        setDrafts((d) => { const n = { ...d }; delete n[row.category]; return n })
+                        setMsg2('Cleared.')
+                      }}
+                      aria-label={`Clear budget for ${row.category}`}
+                      className="min-h-[44px] shrink-0 rounded-xl px-3 text-sm font-bold"
+                      style={{ border: '1px solid var(--card-border)', color: 'var(--text-2)' }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
