@@ -5,7 +5,7 @@
  * the only way pages change. Ownership is checked here, against the email on a
  * verified ID token — the browser's `isOwner()` check only hides the UI.
  */
-import { LIBRARY_COLLECTION, normalizeSlug } from '../../../../lib/contentPaths'
+import { LIBRARY_COLLECTION, normalizeAudience, normalizeSlug } from '../../../../lib/contentPaths'
 import { adminDb, contentDocRef, isAdminConfigured, verifyBearer } from '../../../../lib/firebaseAdmin'
 import { OWNER_EMAILS } from '../../../../lib/owner'
 
@@ -61,6 +61,8 @@ export async function POST(req) {
     markdown,
     order: Number.isFinite(Number(body.order)) ? Number(body.order) : 0,
     published: body.published !== false,
+    // Unclassified pages stay private — publishing to everyone is deliberate.
+    audience: normalizeAudience(body.audience),
     updatedAt: new Date().toISOString(),
     updatedBy: caller.email,
   }

@@ -30,6 +30,20 @@ export function appDateKey(date = new Date()) {
   }).format(date)
 }
 
+/**
+ * Who a library page is for.
+ *
+ * `owner` pages are the workspace owner's own material — personal plans,
+ * targets and self-assessments — and must never reach another account.
+ * `everyone` is the deliberate act of publishing something general.
+ * Default to `owner`: a page nobody has classified is private, not public.
+ */
+export const PAGE_AUDIENCES = ['owner', 'everyone']
+
+export function normalizeAudience(raw) {
+  return PAGE_AUDIENCES.includes(raw) ? raw : 'owner'
+}
+
 /** Slugs are document ids, so keep them to a safe, stable character set. */
 export function normalizeSlug(raw) {
   return String(raw || '')

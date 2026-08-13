@@ -28,6 +28,7 @@ export const REFERENCE = [
   {
     id: 'ref_morning_creed',
     slug: 'morning-creed',
+    audience: 'owner',
     title: 'Read Every Morning',
     icon: '📌',
     group: 'Daily practice',
@@ -43,6 +44,7 @@ One fix per day. Record yourself weekly. Read one page daily. Never stop the hab
   {
     id: 'ref_block_steps',
     slug: 'block-steps',
+    audience: 'everyone',
     title: 'Block Steps — Warmup & Self-Correct',
     icon: '🎙️',
     group: 'Daily practice',
@@ -70,6 +72,7 @@ One fix per day. Record yourself weekly. Read one page daily. Never stop the hab
   {
     id: 'ref_study_materials',
     slug: 'study-materials',
+    audience: 'everyone',
     title: 'Study Materials — Daily Drivers',
     icon: '🎓',
     group: 'Daily practice',
@@ -91,6 +94,7 @@ Extra reps on **/v/ vs /b/** ("very" not "bery"), **/z/ vs /j/** ("zero" not "je
   {
     id: 'ref_practice_prompts',
     slug: 'practice-prompts',
+    audience: 'everyone',
     title: 'Practice Prompts',
     icon: '💬',
     group: 'Daily practice',
@@ -126,6 +130,7 @@ Extra reps on **/v/ vs /b/** ("very" not "bery"), **/z/ vs /j/** ("zero" not "je
   {
     id: 'ref_fix_behavior',
     slug: 'fix-behavior',
+    audience: 'owner',
     title: 'Fix Behavior System — The 5 Behaviors',
     icon: '🎯',
     group: 'Mindset',
@@ -169,6 +174,7 @@ Extra reps on **/v/ vs /b/** ("very" not "bery"), **/z/ vs /j/** ("zero" not "je
   {
     id: 'ref_gym',
     slug: 'gym-split',
+    audience: 'owner',
     title: 'Gym & Fitness — Weekly Split',
     icon: '🏋️',
     group: 'Body',
@@ -194,6 +200,7 @@ Swap this for whatever split the gym trainer recommends once you join — it exi
   {
     id: 'ref_eating',
     slug: 'healthy-eating',
+    audience: 'owner',
     title: 'Healthy Eating Framework',
     icon: '🍽️',
     group: 'Body',
@@ -222,6 +229,7 @@ Swap this for whatever split the gym trainer recommends once you join — it exi
   {
     id: 'ref_money_psych',
     slug: 'money-psychology',
+    audience: 'owner',
     title: 'Money Psychology & Management',
     icon: '💰',
     group: 'Money',
@@ -248,6 +256,7 @@ Earning more only compounds if the handling side doesn't leak it back out. This 
   {
     id: 'ref_speaking_30',
     slug: 'speaking-30day',
+    audience: 'owner',
     title: '30-Day CEO Speaking Plan',
     icon: '🗣️',
     group: 'Career',
@@ -304,6 +313,7 @@ Obama speeches (clear pauses, calm delivery) · Simon Sinek TED (simple words, p
   {
     id: 'ref_crore',
     slug: 'crore-plan',
+    audience: 'owner',
     title: '1 Crore BDT Plan — 2 Years',
     icon: '🎯',
     group: 'Career',
@@ -339,6 +349,7 @@ Better English → more confident on calls → better client handling → more c
   {
     id: 'ref_client_handling',
     slug: 'client-handling',
+    audience: 'owner',
     title: 'Client Handling — Question Bank',
     icon: '🤝',
     group: 'Career',

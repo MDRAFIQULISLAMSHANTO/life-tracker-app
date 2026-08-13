@@ -7,14 +7,36 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Shared content everyone reads live: the daily quote and the study library.
-    // Writes are closed to every client — the Admin SDK in the API routes
-    // bypasses these rules, so authorship is enforced there (verified ID token
-    // checked against OWNER_EMAILS) rather than trusted from the browser.
-    match /content/{document=**} {
+    // Shared content. Writes are closed to every client — the Admin SDK in the
+    // API routes bypasses these rules, so authorship is enforced there (verified
+    // ID token checked against OWNER_EMAILS) rather than trusted from the
+    // browser. Keep this list in sync with OWNER_EMAILS in src/lib/owner.js.
+    function isOwner() {
+      return request.auth != null
+             && request.auth.token.email in ['rishanto.001@gmail.com'];
+    }
+
+    // The daily quote is the same for everybody.
+    match /content/quotes/{document=**} {
       allow read: if request.auth != null;
       allow write: if false;
     }
+
+    // Library pages are NOT all public: `audience: 'owner'` pages are the
+    // owner's personal plans and targets. Non-owners must constrain their query
+    // to audience == 'everyone' — Firestore evaluates this against the query,
+    // so an unconstrained listing is rejected outright rather than filtered.
+    // A page missing the field is treated as private (fails closed).
+    match /content/library/pages/{slug} {
+      allow read: if isOwner()
+                  || (request.auth != null && resource.data.audience == 'everyone');
+      allow write: if false;
+    }
+
+    // NOTE: deliberately no `match /content/{document=**}` catch-all. Firestore
+    // grants access if ANY matching rule allows it, so a broad read rule here
+    // would re-open the library pages above no matter how strict that rule is.
+    // Anything under content/ not matched above is denied by default.
 
     // Legacy trackers — kept read/write for their OWNER only so the one-time
     // migration into the growth payload can still read them. Previously these

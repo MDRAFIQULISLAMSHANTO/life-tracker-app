@@ -6,7 +6,7 @@
  * you have edited since seeding WILL be overwritten, which is why it needs
  * ?force=1 once the collection is no longer empty.
  */
-import { LIBRARY_COLLECTION, normalizeSlug } from '../../../../lib/contentPaths'
+import { LIBRARY_COLLECTION, normalizeAudience, normalizeSlug } from '../../../../lib/contentPaths'
 import { adminDb, isAdminConfigured, verifyBearer } from '../../../../lib/firebaseAdmin'
 import { REFERENCE } from '../../../../lib/growthSeed'
 import { OWNER_EMAILS } from '../../../../lib/owner'
@@ -55,6 +55,7 @@ export async function POST(req) {
       markdown: page.markdown || '',
       order: i,
       published: true,
+      audience: normalizeAudience(page.audience),
       updatedAt: now,
       updatedBy: caller.email,
     })

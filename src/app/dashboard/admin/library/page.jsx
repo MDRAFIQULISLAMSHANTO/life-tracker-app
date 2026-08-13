@@ -25,6 +25,8 @@ const BLANK = {
   markdown: '',
   order: 0,
   published: true,
+  // Private until deliberately shared — see PAGE_AUDIENCES in contentPaths.
+  audience: 'owner',
 }
 
 /**
@@ -100,7 +102,12 @@ export default function AdminLibraryPage() {
       setSelectedSlug(page.slug)
       setDraft({ ...BLANK, ...page })
       await reload()
-      setStatus({ kind: 'ok', message: `Saved — live for everyone at /dashboard/growth/${page.slug}` })
+      setStatus({
+        kind: 'ok',
+        message: page.audience === 'everyone'
+          ? `Saved — live for every account at /dashboard/growth/${page.slug}`
+          : `Saved — private to you at /dashboard/growth/${page.slug}`,
+      })
     } catch (e) {
       setStatus({ kind: 'error', message: e.message })
     } finally {
@@ -205,6 +212,14 @@ export default function AdminLibraryPage() {
               >
                 <span aria-hidden>{p.icon}</span>
                 <span className="min-w-0 flex-1 truncate">{p.title}</span>
+                {p.audience === 'everyone' && (
+                  <span
+                    className="shrink-0 rounded px-1 text-[9px] font-bold uppercase tracking-wide"
+                    style={{ background: 'rgba(var(--accent-rgb),0.14)', color: 'var(--accent)' }}
+                  >
+                    Public
+                  </span>
+                )}
                 {p.published ? (
                   <Eye className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--text-3)' }} />
                 ) : (
@@ -257,13 +272,27 @@ export default function AdminLibraryPage() {
                 onChange={(e) => setDraft((d) => ({ ...d, order: Number(e.target.value) }))}
               />
             </Field>
-            <Field label="Visibility">
+            <Field label="Status">
               <Select
                 value={draft.published ? 'published' : 'draft'}
                 onChange={(e) => setDraft((d) => ({ ...d, published: e.target.value === 'published' }))}
               >
-                <option value="published">Published — visible to everyone</option>
+                <option value="published">Published</option>
                 <option value="draft">Draft — only visible here</option>
+              </Select>
+            </Field>
+            <Field
+              label="Who can read it"
+              hint={draft.audience === 'everyone'
+                ? 'Every signed-in account will see this page.'
+                : 'Only you. Personal plans and targets belong here.'}
+            >
+              <Select
+                value={draft.audience}
+                onChange={(e) => setDraft((d) => ({ ...d, audience: e.target.value }))}
+              >
+                <option value="owner">Just me — private</option>
+                <option value="everyone">Everyone with an account</option>
               </Select>
             </Field>
           </div>

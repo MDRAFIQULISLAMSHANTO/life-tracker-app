@@ -13,10 +13,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore'
 import { useAuth } from './AuthContext'
 import { db } from '../lib/firebase'
+import { localCacheKey } from '../lib/firestoreUserSync'
+import { isOwner } from '../lib/owner'
 import { LIBRARY_COLLECTION, QUOTES_COLLECTION, appDateKey } from '../lib/contentPaths'
 
 const QUOTE_CACHE_KEY = 'livio_daily_quote_v1'
-const LIBRARY_CACHE_KEY = 'livio_content_library_v1'
+const LIBRARY_CACHE_KEY_BASE = 'livio_content_library_v1'
 
 /** Shown when the quote has never loaded and generation is unavailable. */
 const FALLBACK_QUOTES = [
@@ -123,6 +125,12 @@ const ContentContext = createContext(null)
 export function ContentProvider({ children }) {
   const { user } = useAuth()
   const uid = user?.uid || null
+  // Only the owner may read their own `audience: 'owner'` pages.
+  const owner = isOwner(user)
+  // The quote is identical for everyone, but the library is not any more — so
+  // its cache is namespaced by account, or signing out of the owner's session
+  // would leave their private pages readable from localStorage.
+  const libraryCacheKey = localCacheKey(LIBRARY_CACHE_KEY_BASE, uid)
 
   // Start empty so server HTML matches the first client render; caches are read
   // after mount, like the per-user contexts (avoids hydration error #418).
@@ -135,8 +143,13 @@ export function ContentProvider({ children }) {
   useEffect(() => {
     const cached = readCache(QUOTE_CACHE_KEY, null)
     if (cached?.dateKey === appDateKey()) setQuote(cached)
-    setPages(readCache(LIBRARY_CACHE_KEY, []))
   }, [])
+
+  // Re-read the library cache whenever the account changes, so the previous
+  // account's pages never linger on screen while the listener reconnects.
+  useEffect(() => {
+    setPages(readCache(libraryCacheKey, []))
+  }, [libraryCacheKey])
 
   // The app can stay open past midnight — roll the key over rather than showing
   // yesterday's quote until the next reload.
@@ -195,7 +208,17 @@ export function ContentProvider({ children }) {
   useEffect(() => {
     if (!db || !uid) return () => {}
     return subscribeResilient(
-      () => query(collection(db, ...LIBRARY_COLLECTION), where('published', '==', true)),
+      () => {
+        const base = collection(db, ...LIBRARY_COLLECTION)
+        // Firestore evaluates rules against the QUERY, not the documents it
+        // would return: a listing that doesn't constrain `audience` is rejected
+        // outright for non-owners rather than being filtered down. So the
+        // constraint has to be in the query, and only the owner — whose rule
+        // branch is query-independent — may ask for everything.
+        return owner
+          ? query(base, where('published', '==', true))
+          : query(base, where('published', '==', true), where('audience', '==', 'everyone'))
+      },
       (snap) => {
         const next = snap.docs
           .map((d) => d.data())
@@ -207,11 +230,11 @@ export function ContentProvider({ children }) {
               String(a.title || '').localeCompare(String(b.title || ''))
           )
         setPages(next)
-        writeCache(LIBRARY_CACHE_KEY, next)
+        writeCache(libraryCacheKey, next)
       },
       'library'
     )
-  }, [uid])
+  }, [uid, owner])
 
   const value = useMemo(() => {
     const pageBySlug = {}
