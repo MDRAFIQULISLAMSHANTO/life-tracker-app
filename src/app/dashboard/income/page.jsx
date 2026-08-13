@@ -1,10 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import { useFinance } from '../../../context/FinanceContext'
 import CategoryManager from '../../../components/finance/CategoryManager'
+import TransactionEditSheet from '../../../components/finance/TransactionEditSheet'
 import { formatCurrency } from '../../../utils/formatters'
 
 const labelCls = 'block text-xs font-bold mb-1.5 uppercase tracking-wide'
@@ -20,6 +21,8 @@ export default function IncomePage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [accountId, setAccountId] = useState(accounts[0]?.id || '')
   const [submitError, setSubmitError] = useState('')
+  // The row being corrected; null when the sheet is closed.
+  const [editing, setEditing] = useState(null)
 
   const incomeTx = useMemo(() =>
     transactions
@@ -147,11 +150,18 @@ export default function IncomePage() {
                       +{formatCurrency(Number(t.amount || 0), currency)}
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <button type="button" onClick={() => deleteTransaction(t.id)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-70 ml-auto"
-                        style={{ background: 'rgba(220,38,38,0.08)', color: 'var(--danger)' }}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="ml-auto flex items-center justify-end gap-1.5">
+                        <button type="button" onClick={() => setEditing(t)} aria-label="Edit entry"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-70"
+                          style={{ background: 'var(--input-bg)', color: 'var(--text-2)' }}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button type="button" onClick={() => deleteTransaction(t.id)} aria-label="Delete entry"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-70"
+                          style={{ background: 'rgba(220,38,38,0.08)', color: 'var(--danger)' }}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -160,6 +170,8 @@ export default function IncomePage() {
           </div>
         )}
       </div>
+
+      <TransactionEditSheet open={!!editing} tx={editing} onClose={() => setEditing(null)} />
     </div>
   )
 }

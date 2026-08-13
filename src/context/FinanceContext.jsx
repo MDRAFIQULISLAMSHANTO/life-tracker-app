@@ -503,6 +503,47 @@ export function FinanceProvider({ children }) {
       return { ok: true, tx }
     }
 
+    /**
+     * Correct an existing entry.
+     *
+     * Only the fields present in `patch` change, so callers can update one
+     * thing without resupplying the row. Loan-derived rows are refused:
+     * they are rebuilt from the loan by buildLoanTransactions() whenever the
+     * loan changes, so an edit here would be silently discarded later — the
+     * loan itself is the thing to edit.
+     */
+    const updateTransaction = (id, patch = {}) => {
+      const existing = state.transactions.find((t) => t.id === id)
+      if (!existing) return { ok: false, error: 'That entry no longer exists.' }
+      if (existing.sourceLoanId) {
+        return { ok: false, error: 'This entry comes from a loan. Edit the loan instead.' }
+      }
+
+      const next = { ...existing }
+
+      if (patch.amount !== undefined) {
+        const num = Number(patch.amount)
+        if (!Number.isFinite(num) || num <= 0) return { ok: false, error: 'Amount must be > 0.' }
+        next.amount = Math.round(num * 100) / 100
+      }
+      if (patch.type !== undefined) {
+        if (patch.type !== 'income' && patch.type !== 'expense') {
+          return { ok: false, error: 'Transaction type is required.' }
+        }
+        next.type = patch.type
+      }
+      if (patch.category !== undefined) next.category = String(patch.category || '').trim() || 'Other'
+      if (patch.description !== undefined) next.description = String(patch.description || '').trim()
+      if (patch.date !== undefined) next.date = String(patch.date || '').slice(0, 10) || existing.date
+      if (patch.accountId !== undefined) next.accountId = patch.accountId || existing.accountId
+
+      setState((prev) => ({
+        ...prev,
+        transactions: prev.transactions.map((t) => (t.id === id ? next : t)),
+      }))
+      return { ok: true, tx: next }
+    }
+
     const deleteTransaction = (id) => {
       setState((prev) => ({ ...prev, transactions: prev.transactions.filter((t) => t.id !== id) }))
       return { ok: true }
@@ -723,6 +764,7 @@ export function FinanceProvider({ children }) {
       setBudgetForCategory,
       clearBudgetForCategory,
       addTransaction,
+      updateTransaction,
       deleteTransaction,
       importTransactionsFromRows,
       upsertLoan,
