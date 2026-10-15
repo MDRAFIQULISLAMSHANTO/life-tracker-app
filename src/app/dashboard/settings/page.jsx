@@ -121,7 +121,7 @@ function LogoutButton() {
 export default function SettingsPage() {
   const { user, loading, logout } = useAuth()
   const router = useRouter()
-  const { currency, setCurrency, accounts, addAccount, renameAccount, deleteAccount, updateAccountBalance, expenseCategories, incomeCategories, otherCategories, addCategory, removeCategory, resetFinanceDataForMonth, resetAllFinanceToEmpty, loadDemoData } = useFinance()
+  const { currency, setCurrency, accounts, addAccount, renameAccount, deleteAccount, updateAccountBalance, updateAccountCredit, expenseCategories, incomeCategories, otherCategories, addCategory, removeCategory, resetFinanceDataForMonth, resetAllFinanceToEmpty, loadDemoData } = useFinance()
   const { resetDashboardForMonth, loadDemoAgenda, events, tasks, notes } = useDashboardToday()
   // Full context objects, for the "download everything" export.
   const growth = useGrowth()
@@ -301,6 +301,7 @@ export default function SettingsPage() {
             onRename={renameAccount}
             onDelete={deleteAccount}
             onUpdateBalance={updateAccountBalance}
+            onUpdateCredit={updateAccountCredit}
           />
         </section>
 

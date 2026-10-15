@@ -122,7 +122,7 @@ export default function TransactionEditSheet({ open, tx, onClose }) {
               <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.name}
+                    {a.name}{a.kind === 'credit' ? ' (card)' : ''}
                   </option>
                 ))}
               </Select>

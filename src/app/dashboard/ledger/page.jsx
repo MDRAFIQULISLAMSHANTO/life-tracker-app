@@ -155,7 +155,7 @@ export default function LedgerPage() {
           <div>
             <label className={labelCls} style={labelStyle}>Account</label>
             <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}{a.kind === 'credit' ? ' (card)' : ''}</option>)}
             </Select>
           </div>
           <div className="md:col-span-2">

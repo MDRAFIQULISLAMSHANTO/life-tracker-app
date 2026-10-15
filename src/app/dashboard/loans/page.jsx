@@ -2,16 +2,23 @@
 
 import { useMemo, useState } from 'react'
 import {
-  ArrowDownLeft, ArrowUpRight, CalendarDays, Edit3, Plus, Save, Trash2, User, Wallet, X,
+  ArrowDownLeft, ArrowUpRight, CalendarDays, Edit3, Plus, Repeat, Save, Trash2, User, Wallet, X,
 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
-import { useFinance, loanOutstanding, loanPaid } from '../../../context/FinanceContext'
+import { useFinance, loanOutstanding, loanPaid, installmentsPosted } from '../../../context/FinanceContext'
 import { formatCurrency } from '../../../utils/formatters'
 
 const labelCls = 'block text-xs font-bold mb-1.5 uppercase tracking-wide'
 const labelStyle = { color: 'var(--text-3)' }
 
 const today = () => new Date().toISOString().slice(0, 10)
+const thisMonth = () => today().slice(0, 7)
+
+function addMonths(monthKey, n) {
+  const [y, m] = monthKey.split('-').map(Number)
+  const d = new Date(y, m - 1 + n, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
 
 // Per-direction copy so the single form/list reads correctly in both modes.
 const COPY = {
@@ -52,6 +59,13 @@ export default function LoansPage() {
   const [person, setPerson] = useState('')
   const [countInFinance, setCountInFinance] = useState(true)
   const [error, setError] = useState('')
+
+  // Auto installment (EMI): a fixed amount repaid by itself each month, for N months.
+  const [autoOn, setAutoOn] = useState(false)
+  const [autoAmount, setAutoAmount] = useState('')
+  const [autoMonths, setAutoMonths] = useState('')
+  const [autoStart, setAutoStart] = useState(thisMonth)
+  const [autoDay, setAutoDay] = useState('1')
 
   // Repayment inline form state (one open at a time)
   const [repayFor, setRepayFor] = useState(null)
@@ -95,6 +109,12 @@ export default function LoansPage() {
     return Object.entries(map).sort((a, b) => (b[1].owe + b[1].owed) - (a[1].owe + a[1].owed))
   }, [loans])
 
+  // Every loan with an installment plan still running, whatever month it began.
+  const runningPlans = useMemo(
+    () => loans.filter((l) => l.autoPay?.active && loanOutstanding(l) > 0),
+    [loans]
+  )
+
   const uniquePersons = useMemo(() => {
     const names = new Set(loans.map((l) => (l.person || '').trim()).filter(Boolean))
     return [...names]
@@ -107,6 +127,7 @@ export default function LoansPage() {
     setEditingId(null); setDirection('borrowed'); setAmount(''); setReason(''); setPerson('')
     setCountInFinance(true); setError('')
     setBorrowDate(today()); setExtendedDate(today())
+    setAutoOn(false); setAutoAmount(''); setAutoMonths(''); setAutoStart(thisMonth()); setAutoDay('1')
   }
 
   const startEdit = (l) => {
@@ -114,12 +135,23 @@ export default function LoansPage() {
     setAmount(String(l.amount ?? '')); setReason(l.reason || ''); setPerson(l.person || '')
     setBorrowDate(l.borrowDate || today()); setExtendedDate(l.extendedDate || today())
     setCountInFinance(!!l.countInFinance); setError('')
+    setAutoOn(!!l.autoPay)
+    setAutoAmount(l.autoPay ? String(l.autoPay.amount) : '')
+    setAutoMonths(l.autoPay ? String(l.autoPay.months) : '')
+    setAutoStart(l.autoPay?.startMonth || thisMonth())
+    setAutoDay(String(l.autoPay?.dayOfMonth || 1))
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const onSubmit = (e) => {
     e.preventDefault(); setError('')
-    const result = upsertLoan({ id: editingId || undefined, direction, amount, borrowDate, extendedDate, reason, countInFinance, person })
+    let autoPay = null
+    if (autoOn) {
+      if (!(Number(autoAmount) > 0)) { setError('Enter the monthly installment amount.'); return }
+      if (!(Number(autoMonths) >= 1)) { setError('Enter how many months the installment runs.'); return }
+      autoPay = { amount: autoAmount, months: autoMonths, startMonth: autoStart, dayOfMonth: autoDay, active: true }
+    }
+    const result = upsertLoan({ id: editingId || undefined, direction, amount, borrowDate, extendedDate, reason, countInFinance, person, autoPay })
     if (!result.ok) { setError(result.error || 'Unable to save.'); return }
     resetForm()
   }
@@ -185,6 +217,40 @@ export default function LoansPage() {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Running installment plans */}
+      {runningPlans.length > 0 && (
+        <div className="glass-card">
+          <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-3)' }}>
+            Running installments
+          </p>
+          <div className="space-y-3">
+            {runningPlans.map((l) => {
+              const done = installmentsPosted(l)
+              const pct = Math.min(100, Math.round((done / l.autoPay.months) * 100))
+              const lc = COPY[l.direction === 'lent' ? 'lent' : 'borrowed']
+              return (
+                <button key={l.id} type="button" onClick={() => startEdit(l)} className="w-full text-left">
+                  <div className="flex items-center justify-between gap-3 mb-1.5">
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Repeat className="w-3.5 h-3.5 shrink-0" style={{ color: lc.color }} />
+                      <span className="text-sm font-bold truncate" style={{ color: 'var(--text-1)' }}>
+                        {l.person || lc.badge} · {formatCurrency(l.autoPay.amount, currency)}/mo
+                      </span>
+                    </span>
+                    <span className="text-xs font-semibold tabular-nums shrink-0" style={{ color: 'var(--text-2)' }}>
+                      {done}/{l.autoPay.months} · {formatCurrency(loanOutstanding(l), currency)} left
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--input-bg)' }}>
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: lc.color, transition: 'width 0.6s ease' }} />
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
@@ -275,6 +341,58 @@ export default function LoansPage() {
             </div>
           </div>
 
+          {/* Auto installment */}
+          <div className="md:col-span-2 rounded-xl p-4" style={{ background: 'var(--input-bg)', border: '1px solid var(--card-border)' }}>
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <div onClick={() => setAutoOn((v) => !v)}
+                className="relative w-10 h-6 rounded-full transition-colors cursor-pointer shrink-0"
+                style={{ background: autoOn ? 'var(--accent)' : 'var(--input-border)' }}>
+                <div className="absolute top-1 left-1 w-4 h-4 rounded-full surface-1 shadow transition-transform"
+                  style={{ transform: autoOn ? 'translateX(16px)' : 'translateX(0)' }} />
+              </div>
+              <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                <Repeat className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+                {direction === 'borrowed' ? 'Auto-deduct a monthly installment' : 'Auto-collect a monthly installment'}
+              </span>
+            </label>
+            {autoOn && (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                  <div>
+                    <label className={labelCls} style={labelStyle}>Per month</label>
+                    <input type="number" value={autoAmount} onChange={(e) => setAutoAmount(e.target.value)}
+                      min="0" step="0.01" placeholder="0.00" className="glass-input min-h-[44px]" inputMode="decimal" />
+                  </div>
+                  <div>
+                    <label className={labelCls} style={labelStyle}>Months</label>
+                    <input type="number" value={autoMonths} onChange={(e) => setAutoMonths(e.target.value)}
+                      min="1" max="600" step="1" placeholder="12" className="glass-input min-h-[44px]" inputMode="numeric" />
+                  </div>
+                  <div>
+                    <label className={labelCls} style={labelStyle}>Starting</label>
+                    <input type="month" value={autoStart} onChange={(e) => setAutoStart(e.target.value)} className="glass-input min-h-[44px]" />
+                  </div>
+                  <div>
+                    <label className={labelCls} style={labelStyle}>Day</label>
+                    <input type="number" value={autoDay} onChange={(e) => setAutoDay(e.target.value)}
+                      min="1" max="31" className="glass-input min-h-[44px]" inputMode="numeric" />
+                  </div>
+                </div>
+                {Number(autoAmount) > 0 && Number(autoMonths) >= 1 && (
+                  <p className="text-xs mt-3" style={{ color: 'var(--text-2)' }}>
+                    {formatCurrency(Number(autoAmount), currency)} × {Math.floor(Number(autoMonths))} months
+                    {' = '}<strong style={{ color: 'var(--text-1)' }}>{formatCurrency(Number(autoAmount) * Math.floor(Number(autoMonths)), currency)}</strong>
+                    , {autoStart} → {addMonths(autoStart, Math.floor(Number(autoMonths)) - 1)}.
+                    {Number(amount) > 0 && Number(autoAmount) * Math.floor(Number(autoMonths)) < Number(amount) && (
+                      <span style={{ color: 'var(--warning)' }}> Leaves {formatCurrency(Number(amount) - Number(autoAmount) * Math.floor(Number(autoMonths)), currency)} to repay by hand.</span>
+                    )}
+                    {' '}Stops early once the loan is fully repaid.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+
           <div className="md:col-span-2">
             <label className={labelCls} style={labelStyle}>Reason</label>
             <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3}
@@ -338,6 +456,13 @@ export default function LoansPage() {
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                             style={{ background: 'var(--input-bg)', color: 'var(--text-3)', border: '1px solid var(--card-border)' }}>
                             Tracking only
+                          </span>
+                        )}
+                        {l.autoPay && !settled && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                            style={{ background: 'rgba(var(--accent-rgb),0.10)', color: 'var(--accent)' }}>
+                            <Repeat className="w-2.5 h-2.5" />
+                            Auto {formatCurrency(l.autoPay.amount, currency)}/mo · {installmentsPosted(l)}/{l.autoPay.months}
                           </span>
                         )}
                         {settled && (

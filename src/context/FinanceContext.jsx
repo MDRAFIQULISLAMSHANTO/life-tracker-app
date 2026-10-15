@@ -78,6 +78,37 @@ function dedupeRecurringTx(transactions) {
   })
 }
 
+export const ACCOUNT_KINDS = ['standard', 'credit']
+
+/**
+ * A `credit` account behaves like a credit card: its balance is what you owe
+ * (spending drives it negative), `creditLimit` caps spending, and paying the
+ * bill is a transfer into it from another account.
+ */
+function normalizeAccount(raw) {
+  if (!raw || typeof raw !== 'object' || !raw.id) return null
+  const kind = raw.kind === 'credit' ? 'credit' : 'standard'
+  const acc = {
+    ...raw,
+    name: String(raw.name || '').trim() || 'Account',
+    startingBalance: Number(raw.startingBalance) || 0,
+    kind,
+  }
+  if (kind === 'credit') {
+    acc.creditLimit = Math.max(0, Math.round(Number(raw.creditLimit || 0) * 100) / 100)
+    acc.dueDay = Math.min(Math.max(Number(raw.dueDay) || 0, 0), 31)
+  } else {
+    delete acc.creditLimit
+    delete acc.dueDay
+  }
+  return acc
+}
+
+/** What's still owed on a credit account given its live balance. */
+export function creditOwed(balance) {
+  return Math.max(0, Math.round(-Number(balance || 0) * 100) / 100)
+}
+
 const STORAGE_KEY = 'livio_finance_v1'
 const FS_PATH = ['liver', 'finance']
 
@@ -120,10 +151,19 @@ function normalizeLoan(raw) {
           amount: Math.max(0, Math.round(Number(r?.amount || 0) * 100) / 100),
           date: r?.date ? String(r.date).slice(0, 10) : todayISODate(),
           note: String(r?.note || '').trim(),
+          ...(/^\d{4}-\d{2}$/.test(r?.autoMonth || '') ? { autoMonth: r.autoMonth } : {}),
         }))
         .filter((r) => r.amount > 0)
     : []
   const borrowDate = raw.borrowDate ? String(raw.borrowDate).slice(0, 10) : todayISODate()
+  // Two devices posting the same installment month converge to one entry.
+  const seenAuto = new Set()
+  const dedupedRepayments = repayments.filter((r) => {
+    if (!r.autoMonth) return true
+    if (seenAuto.has(r.autoMonth)) return false
+    seenAuto.add(r.autoMonth)
+    return true
+  })
   return {
     id: raw.id || safeId(),
     direction,
@@ -133,8 +173,55 @@ function normalizeLoan(raw) {
     extendedDate: raw.extendedDate ? String(raw.extendedDate).slice(0, 10) : borrowDate,
     reason: String(raw.reason || '').trim(),
     countInFinance,
-    repayments,
+    repayments: dedupedRepayments,
+    autoPay: normalizeAutoPay(raw.autoPay),
   }
+}
+
+/**
+ * A fixed installment that repays (or collects) a loan by itself each month,
+ * for a limited number of months — an EMI. Null when the loan has none.
+ */
+function normalizeAutoPay(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const amount = Math.round(Number(raw.amount || 0) * 100) / 100
+  const months = Math.floor(Number(raw.months) || 0)
+  if (!(amount > 0) || months < 1) return null
+  return {
+    amount,
+    months: Math.min(months, 600),
+    startMonth: /^\d{4}-\d{2}$/.test(raw.startMonth || '') ? raw.startMonth : monthKeyFromDate(new Date()),
+    dayOfMonth: Math.min(Math.max(Number(raw.dayOfMonth) || 1, 1), 31),
+    active: raw.active !== false,
+  }
+}
+
+/**
+ * Installment months a loan still owes, oldest first: inside the plan's window,
+ * not after the current month, not already posted, and only while something is
+ * outstanding. Each carries the amount to post — the last one is trimmed so the
+ * plan never repays more than is owed.
+ */
+export function dueInstallments(loan, currentMonth = monthKeyFromDate(new Date())) {
+  const plan = loan?.autoPay
+  if (!plan || !plan.active) return []
+  const posted = new Set((loan.repayments || []).map((r) => r.autoMonth).filter(Boolean))
+  let remaining = loanOutstanding(loan)
+  const out = []
+  for (let i = 0; i < plan.months && remaining > 0; i++) {
+    const m = addMonthKey(plan.startMonth, i)
+    if (m > currentMonth) break
+    if (posted.has(m)) continue
+    const amount = Math.round(Math.min(plan.amount, remaining) * 100) / 100
+    out.push({ monthKey: m, amount, date: clampDayToMonth(m, plan.dayOfMonth) })
+    remaining = Math.round((remaining - amount) * 100) / 100
+  }
+  return out
+}
+
+/** Months of the plan already posted, for "3 of 12" progress. */
+export function installmentsPosted(loan) {
+  return (loan?.repayments || []).filter((r) => r.autoMonth).length
 }
 
 export function loanPaid(loan) {
@@ -212,7 +299,10 @@ function normalizeFinancePayload(raw) {
     otherCategories: Array.isArray(raw.otherCategories) && raw.otherCategories.length
       ? raw.otherCategories
       : base.otherCategories,
-    accounts: Array.isArray(raw.accounts) && raw.accounts.length ? raw.accounts : base.accounts,
+    accounts: (() => {
+      const list = Array.isArray(raw.accounts) ? raw.accounts.map(normalizeAccount).filter(Boolean) : []
+      return list.length ? list : base.accounts.map(normalizeAccount)
+    })(),
     transactions: dedupeRecurringTx(Array.isArray(raw.transactions) ? raw.transactions : []),
     loans: Array.isArray(raw.loans) ? raw.loans.map(normalizeLoan).filter(Boolean) : [],
     recurring: Array.isArray(raw.recurring) ? raw.recurring.map(normalizeRecurring).filter(Boolean) : [],
@@ -315,7 +405,11 @@ export function FinanceProvider({ children }) {
         }
         remoteReadyRef.current = true
         if (payload && typeof payload === 'object') {
-          const next = normalizeFinancePayload(payload)
+          // The viewed month is this device's view state, not data. Taking it
+          // from the snapshot let the echo of our own write — clamped forward
+          // to the current month by normalize — yank the user back from a
+          // past month moments after they navigated to it.
+          const next = { ...normalizeFinancePayload(payload), ledgerMonthKey: stateRef.current.ledgerMonthKey }
           // Already in sync — don't re-render or churn the applyingRemote flag.
           if (JSON.stringify(next) === JSON.stringify(stateRef.current)) return
           // A local edit is queued (newer than this snapshot) — let our pending
@@ -424,12 +518,27 @@ export function FinanceProvider({ children }) {
       setLedgerMonthKey(monthKeyFromDate(d))
     }
 
-    const addAccount = (name, startingBalance = 0) => {
+    /**
+     * `opts.kind: 'credit'` makes a credit card. For a card, `startingBalance`
+     * is entered as the amount currently owed and stored negative, so the
+     * same balance arithmetic works for every account.
+     */
+    const addAccount = (name, startingBalance = 0, opts = {}) => {
       const trimmed = String(name || '').trim()
       if (!trimmed) return { ok: false, error: 'Account name is required.' }
       const exists = state.accounts.some((a) => a.name.toLowerCase() === trimmed.toLowerCase())
       if (exists) return { ok: false, error: 'Account name already exists.' }
-      const acc = { id: safeId(), name: trimmed, startingBalance: Number(startingBalance) || 0 }
+      const isCredit = opts.kind === 'credit'
+      if (isCredit && !(Number(opts.creditLimit) > 0)) return { ok: false, error: 'Credit limit is required for a card.' }
+      const opening = Number(startingBalance) || 0
+      const acc = normalizeAccount({
+        id: safeId(),
+        name: trimmed,
+        startingBalance: isCredit ? -Math.abs(opening) : opening,
+        kind: isCredit ? 'credit' : 'standard',
+        creditLimit: opts.creditLimit,
+        dueDay: opts.dueDay,
+      })
       setState((prev) => ({ ...prev, accounts: [...prev.accounts, acc] }))
       return { ok: true, account: acc }
     }
@@ -453,6 +562,35 @@ export function FinanceProvider({ children }) {
         ...prev,
         accounts: prev.accounts.map((a) => a.id === id ? { ...a, startingBalance: Math.round(num * 100) / 100 } : a),
       }))
+      return { ok: true }
+    }
+
+    const updateAccountCredit = (id, { creditLimit, dueDay } = {}) => {
+      const limit = Number(creditLimit)
+      if (!Number.isFinite(limit) || limit <= 0) return { ok: false, error: 'Credit limit must be > 0.' }
+      setState((prev) => ({
+        ...prev,
+        accounts: prev.accounts.map((a) =>
+          a.id === id ? normalizeAccount({ ...a, creditLimit: limit, dueDay: dueDay ?? a.dueDay }) : a
+        ),
+      }))
+      return { ok: true }
+    }
+
+    /** Pay down a card from another account — a transfer, so it isn't new spending. */
+    const payCreditCard = (cardId, fromId, amount, date) => {
+      const card = state.accounts.find((a) => a.id === cardId)
+      const from = state.accounts.find((a) => a.id === fromId)
+      if (!card || card.kind !== 'credit') return { ok: false, error: 'Choose a credit card to pay.' }
+      if (!from || from.id === card.id) return { ok: false, error: 'Choose the account to pay from.' }
+      const num = Math.round(Number(amount) * 100) / 100
+      if (!Number.isFinite(num) || num <= 0) return { ok: false, error: 'Amount must be > 0.' }
+      const day = date ? String(date).slice(0, 10) : todayISODate()
+      const legs = [
+        { id: safeId(), type: 'expense', amount: num, category: 'Transfer', description: `${card.name} bill payment`, date: day, accountId: from.id },
+        { id: safeId(), type: 'income', amount: num, category: 'Transfer', description: `Payment from ${from.name}`, date: day, accountId: card.id },
+      ]
+      setState((prev) => ({ ...prev, transactions: [...legs, ...prev.transactions] }))
       return { ok: true }
     }
 
@@ -548,6 +686,16 @@ export function FinanceProvider({ children }) {
       if (!type) return { ok: false, error: 'Transaction type is required.' }
       const num = Number(amount)
       if (!Number.isFinite(num) || num <= 0) return { ok: false, error: 'Amount must be > 0.' }
+      const chosenId = accountId || state.accounts[0]?.id || null
+      // A card declines what it cannot cover, like the real thing.
+      const card = state.accounts.find((a) => a.id === chosenId && a.kind === 'credit')
+      if (card && type === 'expense' && card.creditLimit > 0) {
+        const bal = accountBalances.find((a) => a.id === card.id)?.balance || 0
+        const available = Math.round((card.creditLimit - creditOwed(bal)) * 100) / 100
+        if (num > available + 0.001) {
+          return { ok: false, error: `Over the ${card.name} limit — only ${available} available.` }
+        }
+      }
       const tx = {
         id: safeId(),
         type,
@@ -555,7 +703,7 @@ export function FinanceProvider({ children }) {
         category: String(category || '').trim() || 'Other',
         description: String(description || '').trim(),
         date: date ? String(date).slice(0, 10) : todayISODate(),
-        accountId: accountId || state.accounts[0]?.id || null,
+        accountId: chosenId,
       }
       setState((prev) => ({ ...prev, transactions: [tx, ...prev.transactions] }))
       return { ok: true, tx }
@@ -771,7 +919,8 @@ export function FinanceProvider({ children }) {
       }
     }
 
-    const upsertLoan = ({ id, direction, amount, borrowDate, extendedDate, reason, countInFinance, person }) => {
+    /** `autoPay` undefined keeps the loan's current plan; null removes it. */
+    const upsertLoan = ({ id, direction, amount, borrowDate, extendedDate, reason, countInFinance, person, autoPay }) => {
       const num = Number(amount)
       if (!Number.isFinite(num) || num <= 0) return { ok: false, error: 'Amount must be > 0.' }
       const loanId = id || safeId()
@@ -787,6 +936,7 @@ export function FinanceProvider({ children }) {
           person: String(person || '').trim(),
           countInFinance: !!countInFinance,
           repayments: existing?.repayments || [],
+          autoPay: autoPay === undefined ? existing?.autoPay || null : normalizeAutoPay(autoPay),
         }
         const loans = existing ? prev.loans.map((l) => (l.id === loanId ? loan : l)) : [loan, ...prev.loans]
         const accountId = prev.accounts[0]?.id ?? null
@@ -835,6 +985,40 @@ export function FinanceProvider({ children }) {
         const otherTx = prev.transactions.filter((t) => t.sourceLoanId !== loanId)
         const transactions = [...buildLoanTransactions(newLoan, accountId), ...otherTx]
         return { ...prev, loans, transactions }
+      })
+      return { ok: true }
+    }
+
+    // ── Loan installments ──────────────────────────────────────────────────
+    const loanInstallmentsDue = state.loans.flatMap((l) =>
+      dueInstallments(l, currentMonth).map((d) => ({ loan: l, ...d }))
+    )
+
+    /** Post every owed installment as a repayment, in one state update. */
+    const runAutoLoanInstallments = () => {
+      if (!loanInstallmentsDue.length) return { ok: true }
+      setState((prev) => {
+        const accountId = prev.accounts[0]?.id ?? null
+        let changed = false
+        let transactions = prev.transactions
+        const loans = prev.loans.map((l) => {
+          // Recomputed from `prev`, so a second run can never post a month twice.
+          const due = dueInstallments(l, currentMonth)
+          if (!due.length) return l
+          changed = true
+          const done = installmentsPosted(l)
+          const reps = due.map((d, i) => ({
+            id: safeId(),
+            amount: d.amount,
+            date: d.date,
+            note: `Auto installment ${done + i + 1}/${l.autoPay.months}`,
+            autoMonth: d.monthKey,
+          }))
+          const next = { ...l, repayments: [...(l.repayments || []), ...reps] }
+          transactions = [...buildLoanTransactions(next, accountId), ...transactions.filter((t) => t.sourceLoanId !== l.id)]
+          return next
+        })
+        return changed ? { ...prev, loans, transactions } : prev
       })
       return { ok: true }
     }
@@ -929,6 +1113,8 @@ export function FinanceProvider({ children }) {
       accountBalances,
       totalBalance,
       addAccount,
+      updateAccountCredit,
+      payCreditCard,
       renameAccount,
       updateAccountBalance,
       deleteAccount,
@@ -951,6 +1137,8 @@ export function FinanceProvider({ children }) {
       runAutoRecurring,
       importTransactionsFromRows,
       upsertLoan,
+      loanInstallmentsDue,
+      runAutoLoanInstallments,
       addRepayment,
       deleteRepayment,
       deleteLoan,
@@ -972,6 +1160,14 @@ export function FinanceProvider({ children }) {
     if (!remoteReadyRef.current) return
     if (!api.autoRecurringDue.length) return
     api.runAutoRecurring()
+  }, [state, uid, hydratedUid, api])
+
+  // Loan installments post themselves under the same gate as recurring rules.
+  useEffect(() => {
+    if (!uid || hydratedUid !== uid) return
+    if (!remoteReadyRef.current) return
+    if (!api.loanInstallmentsDue.length) return
+    api.runAutoLoanInstallments()
   }, [state, uid, hydratedUid, api])
 
   return <FinanceContext.Provider value={api}>{children}</FinanceContext.Provider>
