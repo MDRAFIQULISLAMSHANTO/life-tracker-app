@@ -16,6 +16,8 @@ import { formatCurrency } from '../../utils/formatters'
 import { useFinance } from '../../context/FinanceContext'
 import { usePrivacy } from '../../context/PrivacyContext'
 import WalletCard from '../../components/dashboard/WalletCard'
+import { useTheme } from '../../context/ThemeContext'
+import { CATEGORICAL, chartMode, moneyColors } from '../../lib/chartColors'
 
 const ExpenseDonutChart = dynamic(() => import('../../components/charts/ExpenseDonutChart'), {
   loading: () => <div className="glass-card animate-pulse" style={{ height: 300 }} />,
@@ -23,6 +25,18 @@ const ExpenseDonutChart = dynamic(() => import('../../components/charts/ExpenseD
 })
 const DailyTrendChart = dynamic(() => import('../../components/charts/DailyTrendChart'), {
   loading: () => <div className="glass-card animate-pulse" style={{ height: 300 }} />,
+  ssr: false,
+})
+const MonthlyTrendChart = dynamic(() => import('../../components/charts/MonthlyTrendChart'), {
+  loading: () => <div className="glass-card animate-pulse" style={{ height: 300 }} />,
+  ssr: false,
+})
+const InsightRings = dynamic(() => import('../../components/charts/InsightRings'), {
+  loading: () => <div className="glass-card animate-pulse" style={{ height: 240 }} />,
+  ssr: false,
+})
+const TopCategoriesChart = dynamic(() => import('../../components/charts/TopCategoriesChart'), {
+  loading: () => <div className="glass-card animate-pulse" style={{ height: 240 }} />,
   ssr: false,
 })
 const BudgetBarChart = dynamic(() => import('../../components/charts/BudgetBarChart'), {
@@ -48,6 +62,37 @@ function buildDailyTrend(ledgerMonthKey, transactions) {
   return rows
 }
 
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function shiftMonthKey(monthKey, delta) {
+  const [y, m] = monthKey.split('-').map(Number)
+  const d = new Date(y, m - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** Income/expense totals for `count` months ending at (and including) monthKey. */
+function buildMonthlyTrend(monthKey, transactions, count = 6) {
+  if (!/^\d{4}-\d{2}$/.test(monthKey || '')) return []
+  const keys = Array.from({ length: count }, (_, i) => shiftMonthKey(monthKey, i - count + 1))
+  const rows = new Map(keys.map((k) => {
+    const [y, m] = k.split('-').map(Number)
+    return [k, { key: k, label: MONTH_SHORT[m - 1], fullLabel: `${MONTH_SHORT[m - 1]} ${y}`, income: 0, expense: 0 }]
+  }))
+  transactions.forEach((t) => {
+    const row = rows.get(String(t.date || '').slice(0, 7))
+    if (!row) return
+    const n = Number(t.amount || 0)
+    if (t.type === 'income') row.income += n
+    else if (t.type === 'expense') row.expense += n
+  })
+  return [...rows.values()]
+}
+
+function cumulative(values) {
+  let run = 0
+  return values.map((v) => (run += v))
+}
+
 export default function DashboardPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
@@ -57,6 +102,9 @@ export default function DashboardPage() {
     expenseByCategory, budgetRowsFull, transactions,
   } = useFinance()
   const { revealed } = usePrivacy()
+  const { theme } = useTheme()
+  const money = moneyColors(theme)
+  const palette = CATEGORICAL[chartMode(theme)]
   const statsRef = useRef(null)
   const chartsRef = useRef(null)
 
@@ -92,7 +140,44 @@ export default function DashboardPage() {
     [transactionsInLedgerMonth]
   )
 
+  const monthlyTrend = useMemo(() => buildMonthlyTrend(ledgerMonthKey, transactions), [ledgerMonthKey, transactions])
+
+  // Cumulative running totals give each summary card a "how the month built up" line.
+  const sparks = useMemo(() => ({
+    income: cumulative(dailyTrendData.map((d) => d.income)),
+    expense: cumulative(dailyTrendData.map((d) => d.expense)),
+    net: cumulative(dailyTrendData.map((d) => d.income - d.expense)),
+    savings: monthlyTrend.map((m) => (m.income > 0 ? Math.max(0, (m.income - m.expense) / m.income) : 0)),
+  }), [dailyTrendData, monthlyTrend])
+
+  const topCategoryRows = useMemo(() => {
+    if (!ledgerMonthKey) return []
+    const prevKey = shiftMonthKey(ledgerMonthKey, -1)
+    const prev = new Map()
+    transactions.forEach((t) => {
+      if (t.type !== 'expense' || String(t.date || '').slice(0, 7) !== prevKey) return
+      const c = t.category || 'Other'
+      prev.set(c, (prev.get(c) || 0) + Number(t.amount || 0))
+    })
+    return expenseData.map((r) => ({ ...r, prev: prev.get(r.name) || 0 }))
+  }, [expenseData, transactions, ledgerMonthKey])
+
+  const monthClock = useMemo(() => {
+    const [y, m] = (ledgerMonthKey || '').split('-').map(Number)
+    const days = new Date(y, m, 0).getDate() || 30
+    const now = new Date()
+    const nowKey = now.getFullYear() * 12 + now.getMonth()
+    const viewKey = y * 12 + (m - 1)
+    if (viewKey < nowKey) return { progress: 100, label: 'Complete' }
+    if (viewKey > nowKey) return { progress: 0, label: 'Not started' }
+    return { progress: (now.getDate() / days) * 100, label: `Day ${now.getDate()} of ${days}` }
+  }, [ledgerMonthKey])
+
   const savingsRate = monthIncome > 0 ? Math.round((monthNet / monthIncome) * 100) : 0
+  // Only spending in categories that have a budget counts against it.
+  const budgeted = budgetRowsFull.filter((r) => Number(r.budget) > 0)
+  const totalBudget = budgeted.reduce((s, r) => s + Number(r.budget), 0)
+  const budgetUsed = totalBudget > 0 ? (budgeted.reduce((s, r) => s + Number(r.spent || 0), 0) / totalBudget) * 100 : 0
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login')
@@ -135,16 +220,20 @@ export default function DashboardPage() {
         {/* Stats Grid */}
         <div ref={statsRef} className="lg:col-span-2 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 content-start">
           <SummaryCard title="Monthly Income" value={formatCurrency(monthIncome, currency)}
-            change="This month" changeType="neutral" icon={TrendingUp} />
+            change="This month" changeType="neutral" icon={TrendingUp}
+            spark={sparks.income} sparkColor={money.income} />
           <SummaryCard title="Monthly Expense" value={formatCurrency(monthExpense, currency)}
-            change="This month" changeType="neutral" icon={TrendingDown} />
+            change="This month" changeType="neutral" icon={TrendingDown}
+            spark={sparks.expense} sparkColor={money.expense} />
           <SummaryCard title="Monthly Net" value={formatCurrency(monthNet, currency)}
             change={monthNet >= 0 ? 'Surplus' : 'Deficit'}
-            changeType={monthNet >= 0 ? 'positive' : 'negative'} icon={Wallet} />
+            changeType={monthNet >= 0 ? 'positive' : 'negative'} icon={Wallet}
+            spark={sparks.net} sparkColor={palette[6]} />
           <SummaryCard title="Savings Rate" value={`${Math.max(0, savingsRate)}%`}
             change="of income"
             changeType={savingsRate >= 20 ? 'positive' : savingsRate < 0 ? 'negative' : 'neutral'}
-            icon={Percent} />
+            icon={Percent}
+            spark={sparks.savings} sparkColor={palette[3]} />
         </div>
       </div>
 
@@ -169,6 +258,17 @@ export default function DashboardPage() {
         <div ref={chartsRef} className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
           <DailyTrendChart data={dailyTrendData} />
           <ExpenseDonutChart data={expenseData} />
+          <MonthlyTrendChart data={monthlyTrend} currency={currency} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 lg:gap-5">
+            <InsightRings
+              savingsRate={savingsRate}
+              budgetUsed={budgetUsed}
+              totalBudget={totalBudget}
+              monthProgress={monthClock.progress}
+              dayLabel={monthClock.label}
+            />
+            <TopCategoriesChart rows={topCategoryRows} />
+          </div>
         </div>
 
         {budgetChartRows.length > 0 && (
