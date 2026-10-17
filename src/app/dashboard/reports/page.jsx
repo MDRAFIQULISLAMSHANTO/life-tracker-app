@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { BarChart3, ChevronDown, Download, FileSpreadsheet, TrendingDown, TrendingUp, Upload } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
-import { useFinance } from '../../../context/FinanceContext'
+import { useFinance, countsAsCashflow } from '../../../context/FinanceContext'
 import { formatCurrency } from '../../../utils/formatters'
 import ExpenseDonutChart from '../../../components/charts/ExpenseDonutChart'
 import DailyTrendChart from '../../../components/charts/DailyTrendChart'
@@ -24,7 +24,7 @@ function buildDailyTrendForMonth(ledgerMonthKey, transactions) {
     expense: 0,
   }))
   transactions
-    .filter((t) => t.date && String(t.date).slice(0, 7) === ledgerMonthKey)
+    .filter((t) => t.date && String(t.date).slice(0, 7) === ledgerMonthKey && countsAsCashflow(t))
     .forEach((t) => {
       const day = parseInt(String(t.date).slice(8, 10), 10) - 1
       if (day < 0 || day >= daysInMonth) return
@@ -61,8 +61,9 @@ export default function ReportsPage() {
   }, [transactions, ledgerMonthKey])
 
   const totals = useMemo(() => {
-    const income = monthTx.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0)
-    const expense = monthTx.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0)
+    const flow = monthTx.filter(countsAsCashflow)
+    const income = flow.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0)
+    const expense = flow.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0)
     const loans = monthTx.filter((t) => t.type === 'loan').reduce((s, t) => s + Number(t.amount || 0), 0)
     return { income, expense, loans, net: income - expense }
   }, [monthTx])
@@ -70,7 +71,7 @@ export default function ReportsPage() {
   const expenseByCategory = useMemo(() => {
     const map = new Map()
     monthTx
-      .filter((t) => t.type === 'expense')
+      .filter((t) => t.type === 'expense' && countsAsCashflow(t))
       .forEach((t) => map.set(t.category || 'Other', (map.get(t.category || 'Other') || 0) + Number(t.amount || 0)))
     return [...map.entries()]
       .map(([name, value]) => ({ name, value }))

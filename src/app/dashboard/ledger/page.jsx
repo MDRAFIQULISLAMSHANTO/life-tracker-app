@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeftRight, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
-import { useFinance } from '../../../context/FinanceContext'
+import { useFinance, isTransferTx } from '../../../context/FinanceContext'
 import { usePrivacy } from '../../../context/PrivacyContext'
 import { formatCurrency } from '../../../utils/formatters'
 import TransactionEditSheet from '../../../components/finance/TransactionEditSheet'
@@ -73,8 +73,10 @@ export default function LedgerPage() {
   }, [transactions, direction, scope, search, ledgerMonthKey])
 
   const totals = useMemo(() => {
-    const income = rows.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0)
-    const expense = rows.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0)
+    // Transfers stay listed but don't count as earning or spending.
+    const flow = rows.filter((t) => !isTransferTx(t))
+    const income = flow.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0)
+    const expense = flow.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0)
     return { income, expense, net: income - expense }
   }, [rows])
 

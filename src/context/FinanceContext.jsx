@@ -6,6 +6,7 @@ import { CURRENCIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../utils/cons
 import { isValidCurrencyCode } from '../utils/currencyOptions'
 import { localCacheKey, subscribeUserPayloadDoc, writeUserPayloadDoc } from '../lib/firestoreUserSync'
 import { mergeOneTimeDemoFinance } from '../lib/demoFinanceData'
+import { emiInterestDue, todayISO as localTodayISO } from '../lib/creditCard'
 
 const FinanceContext = createContext(null)
 
@@ -70,6 +71,12 @@ function normalizeRecurring(raw) {
 function dedupeRecurringTx(transactions) {
   const seen = new Set()
   return transactions.filter((t) => {
+    if (t?.sourceEmiId && t?.emiLeg === 'interest') {
+      const key = `emi::${t.sourceEmiId}::${t.emiIndex}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    }
     if (!t?.sourceRecurringId || !t?.recurringMonth) return true
     const key = `${t.sourceRecurringId}::${t.recurringMonth}`
     if (seen.has(key)) return false
@@ -97,11 +104,59 @@ function normalizeAccount(raw) {
   if (kind === 'credit') {
     acc.creditLimit = Math.max(0, Math.round(Number(raw.creditLimit || 0) * 100) / 100)
     acc.dueDay = Math.min(Math.max(Number(raw.dueDay) || 0, 0), 31)
+    // Cards made before statements existed only had a due day: assume the
+    // usual ~20-day grace and close the cycle that long before it.
+    const derivedClose = acc.dueDay ? ((acc.dueDay + 10 - 1) % 28) + 1 : 1
+    acc.statementDay = Math.min(Math.max(Number(raw.statementDay) || derivedClose, 1), 31)
+    const pct = Number(raw.minDuePct)
+    acc.minDuePct = Number.isFinite(pct) && pct >= 0 && pct <= 100 ? pct : 5
+    acc.minDueFloor = Math.max(0, Number(raw.minDueFloor) || 0)
+    acc.openedOn = /^\d{4}-\d{2}-\d{2}$/.test(raw.openedOn || '') ? raw.openedOn : ''
   } else {
-    delete acc.creditLimit
-    delete acc.dueDay
+    for (const k of ['creditLimit', 'dueDay', 'statementDay', 'minDuePct', 'minDueFloor', 'openedOn']) delete acc[k]
   }
   return acc
+}
+
+/**
+ * Money moving between your own accounts (incl. paying a card bill) is
+ * recorded as an expense leg + an income leg so balances work, but it is
+ * neither earning nor spending — every income/expense total skips it.
+ */
+export function isTransferTx(t) {
+  return !!t?.transferId || t?.category === 'Transfer'
+}
+
+/** Counts towards income/expense totals, charts and budgets. */
+export function countsAsCashflow(t) {
+  return (t?.type === 'income' || t?.type === 'expense') && !isTransferTx(t)
+}
+
+export const CARD_FEE_CATEGORY = 'Card fees & interest'
+
+/**
+ * Turning a card purchase into monthly installments. The purchase itself is a
+ * normal expense on the card (it was spent that day); the plan only changes
+ * how it is billed — one installment per statement — and adds interest as its
+ * own expense on each bill date.
+ */
+function normalizeCardEmi(raw) {
+  if (!raw || typeof raw !== 'object' || !raw.cardId) return null
+  const principal = Math.round(Number(raw.principal || 0) * 100) / 100
+  const months = Math.floor(Number(raw.months) || 0)
+  if (!(principal > 0) || months < 1) return null
+  return {
+    id: raw.id || safeId(),
+    cardId: raw.cardId,
+    description: String(raw.description || '').trim() || 'EMI purchase',
+    principal,
+    months: Math.min(months, 120),
+    ratePct: Math.max(0, Math.min(100, Number(raw.ratePct) || 0)),
+    fee: Math.max(0, Math.round(Number(raw.fee || 0) * 100) / 100),
+    purchaseDate: /^\d{4}-\d{2}-\d{2}$/.test(raw.purchaseDate || '') ? raw.purchaseDate : todayISODate(),
+    purchaseTxId: raw.purchaseTxId || null,
+    closedOn: /^\d{4}-\d{2}-\d{2}$/.test(raw.closedOn || '') ? raw.closedOn : '',
+  }
 }
 
 /** What's still owed on a credit account given its live balance. */
@@ -130,6 +185,7 @@ export function emptyFinance() {
     transactions: [],
     loans: [],
     recurring: [],
+    cardEmis: [],
     budgetsByMonth: {},
   }
 }
@@ -306,6 +362,7 @@ function normalizeFinancePayload(raw) {
     transactions: dedupeRecurringTx(Array.isArray(raw.transactions) ? raw.transactions : []),
     loans: Array.isArray(raw.loans) ? raw.loans.map(normalizeLoan).filter(Boolean) : [],
     recurring: Array.isArray(raw.recurring) ? raw.recurring.map(normalizeRecurring).filter(Boolean) : [],
+    cardEmis: Array.isArray(raw.cardEmis) ? raw.cardEmis.map(normalizeCardEmi).filter(Boolean) : [],
     budgetsByMonth: raw.budgetsByMonth && typeof raw.budgetsByMonth === 'object' ? raw.budgetsByMonth : {},
     // An account that already has transactions predates the first-run flow —
     // never interrupt it to ask questions it has effectively answered.
@@ -467,14 +524,15 @@ export function FinanceProvider({ children }) {
   const api = useMemo(() => {
     const ledgerMonthKey = state.ledgerMonthKey || monthKeyFromDate(new Date())
     const txMonth = transactionsInMonth(state.transactions, ledgerMonthKey)
+    const flowMonth = txMonth.filter(countsAsCashflow)
 
-    const monthIncome = txMonth.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0)
-    const monthExpense = txMonth.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0)
+    const monthIncome = flowMonth.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0)
+    const monthExpense = flowMonth.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0)
     const monthNet = monthIncome - monthExpense
 
     const expenseByCategory = (() => {
       const m = {}
-      txMonth
+      flowMonth
         .filter((t) => t.type === 'expense')
         .forEach((t) => {
           const c = t.category || 'Other'
@@ -493,6 +551,7 @@ export function FinanceProvider({ children }) {
     const budgetRows = budgetRowsFull.filter((row) => row.budget > 0 || row.spent > 0)
 
     const lifetimeNet = state.transactions.reduce((acc, t) => {
+      if (isTransferTx(t)) return acc
       const n = Number(t.amount || 0)
       if (t.type === 'income') return acc + n
       if (t.type === 'expense') return acc - n
@@ -538,6 +597,10 @@ export function FinanceProvider({ children }) {
         kind: isCredit ? 'credit' : 'standard',
         creditLimit: opts.creditLimit,
         dueDay: opts.dueDay,
+        statementDay: opts.statementDay,
+        minDuePct: opts.minDuePct,
+        minDueFloor: opts.minDueFloor,
+        openedOn: isCredit ? localTodayISO() : undefined,
       })
       setState((prev) => ({ ...prev, accounts: [...prev.accounts, acc] }))
       return { ok: true, account: acc }
@@ -565,36 +628,210 @@ export function FinanceProvider({ children }) {
       return { ok: true }
     }
 
-    const updateAccountCredit = (id, { creditLimit, dueDay } = {}) => {
-      const limit = Number(creditLimit)
-      if (!Number.isFinite(limit) || limit <= 0) return { ok: false, error: 'Credit limit must be > 0.' }
+    /** Any of: creditLimit, statementDay, dueDay, minDuePct, minDueFloor. Omitted fields keep their value. */
+    const updateAccountCredit = (id, patch = {}) => {
+      const card = state.accounts.find((a) => a.id === id && a.kind === 'credit')
+      if (!card) return { ok: false, error: 'Card not found.' }
+      const next = { ...card }
+      if (patch.creditLimit !== undefined) {
+        const limit = Number(patch.creditLimit)
+        if (!Number.isFinite(limit) || limit <= 0) return { ok: false, error: 'Credit limit must be > 0.' }
+        next.creditLimit = limit
+      }
+      for (const k of ['statementDay', 'dueDay', 'minDuePct', 'minDueFloor']) {
+        if (patch[k] !== undefined && patch[k] !== '') next[k] = Number(patch[k])
+      }
+      if (patch.statementDay !== undefined && !(next.statementDay >= 1 && next.statementDay <= 31)) {
+        return { ok: false, error: 'Statement day must be 1–31.' }
+      }
       setState((prev) => ({
         ...prev,
-        accounts: prev.accounts.map((a) =>
-          a.id === id ? normalizeAccount({ ...a, creditLimit: limit, dueDay: dueDay ?? a.dueDay }) : a
+        accounts: prev.accounts.map((a) => (a.id === id ? normalizeAccount(next) : a)),
+      }))
+      return { ok: true }
+    }
+
+    /** Available credit right now, or Infinity for a non-card / no-limit account. */
+    const availableCredit = (accountId) => {
+      const card = state.accounts.find((a) => a.id === accountId && a.kind === 'credit')
+      if (!card || !(card.creditLimit > 0)) return Infinity
+      const bal = accountBalances.find((a) => a.id === card.id)?.balance || 0
+      return Math.round((card.creditLimit - creditOwed(bal)) * 100) / 100
+    }
+
+    /**
+     * Move money between two of your own accounts. Both legs share a
+     * `transferId`, so totals skip them and deleting one deletes both. Drawing
+     * from a card (cash advance) is held to its limit.
+     */
+    const transferFunds = ({ fromId, toId, amount, date, note, extra = {} }) => {
+      const from = state.accounts.find((a) => a.id === fromId)
+      const to = state.accounts.find((a) => a.id === toId)
+      if (!from || !to) return { ok: false, error: 'Choose both accounts.' }
+      if (from.id === to.id) return { ok: false, error: 'Cannot transfer to the same account.' }
+      const num = Math.round(Number(amount) * 100) / 100
+      if (!Number.isFinite(num) || num <= 0) return { ok: false, error: 'Amount must be > 0.' }
+      const avail = availableCredit(from.id)
+      if (num > avail + 0.001) return { ok: false, error: `Over the ${from.name} limit — only ${avail} available.` }
+      const day = date ? String(date).slice(0, 10) : todayISODate()
+      const transferId = safeId()
+      const legs = [
+        {
+          id: safeId(), type: 'expense', amount: num, category: 'Transfer', date: day, accountId: from.id,
+          description: note || (to.kind === 'credit' ? `${to.name} bill payment` : `Transfer to ${to.name}`),
+          transferId, toAccountId: to.id,
+        },
+        {
+          id: safeId(), type: 'income', amount: num, category: 'Transfer', date: day, accountId: to.id,
+          description: to.kind === 'credit' ? `Payment from ${from.name}` : `Transfer from ${from.name}`,
+          transferId, fromAccountId: from.id, ...extra,
+        },
+      ]
+      setState((prev) => ({ ...prev, transactions: [...legs, ...prev.transactions] }))
+      return { ok: true, transferId }
+    }
+
+    /**
+     * Pay a card bill from another account. `kind` records what the payer
+     * meant — full statement, minimum, total outstanding or a custom amount —
+     * so the payment history can say it; the statement status itself is
+     * always worked out from the amounts.
+     */
+    const payCreditCard = (cardId, fromId, amount, date, kind = 'custom', note = '') => {
+      const card = state.accounts.find((a) => a.id === cardId)
+      if (!card || card.kind !== 'credit') return { ok: false, error: 'Choose a credit card to pay.' }
+      if (!fromId || fromId === card.id) return { ok: false, error: 'Choose the account to pay from.' }
+      return transferFunds({
+        fromId, toId: card.id, amount, date,
+        note: note ? `${card.name} bill payment: ${note}` : undefined,
+        extra: { paymentKind: ['full', 'minimum', 'total', 'custom'].includes(kind) ? kind : 'custom' },
+      })
+    }
+
+    /** Interest, late fee, annual fee… charged by the bank onto the card. */
+    const addCardCharge = (cardId, { amount, date, label, note } = {}) => {
+      const card = state.accounts.find((a) => a.id === cardId && a.kind === 'credit')
+      if (!card) return { ok: false, error: 'Card not found.' }
+      const num = Math.round(Number(amount) * 100) / 100
+      if (!Number.isFinite(num) || num <= 0) return { ok: false, error: 'Amount must be > 0.' }
+      const tx = {
+        id: safeId(), type: 'expense', amount: num, category: CARD_FEE_CATEGORY,
+        description: [label || 'Card charge', note].filter(Boolean).join(': '),
+        date: date ? String(date).slice(0, 10) : todayISODate(), accountId: card.id, cardCharge: true,
+      }
+      setState((prev) => ({ ...prev, transactions: [tx, ...prev.transactions] }))
+      return { ok: true }
+    }
+
+    // ── Card EMI ─────────────────────────────────────────────────────────
+    /**
+     * `purchaseTxId` converts an existing card purchase; without it a new
+     * purchase is recorded on the card (and held to the limit). A processing
+     * fee posts at once; interest posts on each bill date by itself.
+     */
+    const addCardEmi = (payload = {}) => {
+      const card = state.accounts.find((a) => a.id === payload.cardId && a.kind === 'credit')
+      if (!card) return { ok: false, error: 'Choose a card.' }
+      const purchase = payload.purchaseTxId ? state.transactions.find((t) => t.id === payload.purchaseTxId) : null
+      if (payload.purchaseTxId && !purchase) return { ok: false, error: 'That purchase no longer exists.' }
+      if (purchase && state.cardEmis.some((e) => e.purchaseTxId === purchase.id)) {
+        return { ok: false, error: 'That purchase is already on EMI.' }
+      }
+      const emi = normalizeCardEmi({
+        ...payload,
+        id: safeId(),
+        principal: payload.principal || purchase?.amount,
+        purchaseDate: purchase?.date || payload.purchaseDate,
+        description: payload.description || purchase?.description || purchase?.category,
+      })
+      if (!emi) return { ok: false, error: 'Enter the amount and number of months.' }
+      if (purchase && emi.principal > Number(purchase.amount) + 0.001) {
+        return { ok: false, error: 'EMI amount cannot exceed the purchase.' }
+      }
+      const extra = []
+      if (!purchase) {
+        const avail = availableCredit(card.id)
+        if (emi.principal + emi.fee > avail + 0.001) return { ok: false, error: `Over the ${card.name} limit — only ${avail} available.` }
+        const tx = {
+          id: safeId(), type: 'expense', amount: emi.principal,
+          category: String(payload.category || '').trim() || 'Shopping',
+          description: emi.description, date: emi.purchaseDate, accountId: card.id, emiId: emi.id,
+        }
+        emi.purchaseTxId = tx.id
+        extra.push(tx)
+      }
+      if (emi.fee > 0) {
+        extra.push({
+          id: safeId(), type: 'expense', amount: emi.fee, category: CARD_FEE_CATEGORY,
+          description: `EMI processing fee: ${emi.description}`, date: emi.purchaseDate,
+          accountId: card.id, sourceEmiId: emi.id, emiLeg: 'fee',
+        })
+      }
+      setState((prev) => ({
+        ...prev,
+        cardEmis: [emi, ...prev.cardEmis],
+        transactions: [
+          ...extra,
+          ...prev.transactions.map((t) => (purchase && t.id === purchase.id ? { ...t, emiId: emi.id } : t)),
+        ],
+      }))
+      return { ok: true, emi }
+    }
+
+    /** Pre-pay: the rest of the principal is billed on the next statement, no more interest. */
+    const closeCardEmi = (id, date) => {
+      setState((prev) => ({
+        ...prev,
+        cardEmis: prev.cardEmis.map((e) =>
+          e.id === id ? { ...e, closedOn: date ? String(date).slice(0, 10) : localTodayISO() } : e
         ),
       }))
       return { ok: true }
     }
 
-    /** Pay down a card from another account — a transfer, so it isn't new spending. */
-    const payCreditCard = (cardId, fromId, amount, date) => {
-      const card = state.accounts.find((a) => a.id === cardId)
-      const from = state.accounts.find((a) => a.id === fromId)
-      if (!card || card.kind !== 'credit') return { ok: false, error: 'Choose a credit card to pay.' }
-      if (!from || from.id === card.id) return { ok: false, error: 'Choose the account to pay from.' }
-      const num = Math.round(Number(amount) * 100) / 100
-      if (!Number.isFinite(num) || num <= 0) return { ok: false, error: 'Amount must be > 0.' }
-      const day = date ? String(date).slice(0, 10) : todayISODate()
-      const legs = [
-        { id: safeId(), type: 'expense', amount: num, category: 'Transfer', description: `${card.name} bill payment`, date: day, accountId: from.id },
-        { id: safeId(), type: 'income', amount: num, category: 'Transfer', description: `Payment from ${from.name}`, date: day, accountId: card.id },
-      ]
-      setState((prev) => ({ ...prev, transactions: [...legs, ...prev.transactions] }))
+    /** Removes the plan and the fee/interest it posted; the purchase stays — it happened. */
+    const deleteCardEmi = (id) => {
+      setState((prev) => ({
+        ...prev,
+        cardEmis: prev.cardEmis.filter((e) => e.id !== id),
+        transactions: prev.transactions
+          .filter((t) => t.sourceEmiId !== id)
+          .map((t) => {
+            if (t.emiId !== id) return t
+            const { emiId, ...rest } = t
+            return rest
+          }),
+      }))
+      return { ok: true }
+    }
+
+    const cardEmiInterestDue = (() => {
+      const today = localTodayISO()
+      const posted = new Set(
+        state.transactions.filter((t) => t.sourceEmiId && t.emiLeg === 'interest').map((t) => `${t.sourceEmiId}::${t.emiIndex}`)
+      )
+      return state.cardEmis.flatMap((e) => {
+        const card = state.accounts.find((a) => a.id === e.cardId && a.kind === 'credit')
+        if (!card) return []
+        return emiInterestDue(card, e, today)
+          .filter((r) => !posted.has(`${e.id}::${r.index}`))
+          .map((r) => ({ emi: e, row: r }))
+      })
+    })()
+
+    const runCardEmiInterest = () => {
+      if (!cardEmiInterestDue.length) return { ok: true }
+      const txs = cardEmiInterestDue.map(({ emi, row }) => ({
+        id: safeId(), type: 'expense', amount: row.interest, category: CARD_FEE_CATEGORY,
+        description: `EMI interest ${row.index + 1}/${emi.months}: ${emi.description}`,
+        date: row.billDate, accountId: emi.cardId, sourceEmiId: emi.id, emiLeg: 'interest', emiIndex: row.index,
+      }))
+      setState((prev) => ({ ...prev, transactions: dedupeRecurringTx([...txs, ...prev.transactions]) }))
       return { ok: true }
     }
 
     const deleteAccount = (id) => {
+      if (state.cardEmis.some((e) => e.cardId === id)) return { ok: false, error: 'This card has EMI plans. Delete them first.' }
       const inUse = state.transactions.some((t) => t.accountId === id)
       if (inUse) return { ok: false, error: 'Account has transactions. Move or delete them first.' }
       if (state.accounts.length <= 1) return { ok: false, error: 'At least one account is required.' }
@@ -723,6 +960,12 @@ export function FinanceProvider({ children }) {
       if (!existing) return { ok: false, error: 'That entry no longer exists.' }
       if (existing.sourceLoanId) {
         return { ok: false, error: 'This entry comes from a loan. Edit the loan instead.' }
+      }
+      if (existing.transferId) {
+        return { ok: false, error: 'This is one side of a transfer. Delete it and make the transfer again.' }
+      }
+      if (existing.sourceEmiId) {
+        return { ok: false, error: 'This entry comes from a card EMI plan. Change the plan instead.' }
       }
 
       const next = { ...existing }
@@ -866,8 +1109,16 @@ export function FinanceProvider({ children }) {
       return { ok: true }
     }
 
+    /** A transfer leg takes its other leg with it, so balances never go lopsided. */
     const deleteTransaction = (id) => {
-      setState((prev) => ({ ...prev, transactions: prev.transactions.filter((t) => t.id !== id) }))
+      setState((prev) => {
+        const target = prev.transactions.find((t) => t.id === id)
+        const pair = target?.transferId
+        return {
+          ...prev,
+          transactions: prev.transactions.filter((t) => t.id !== id && (!pair || t.transferId !== pair)),
+        }
+      })
       return { ok: true }
     }
 
@@ -1115,6 +1366,15 @@ export function FinanceProvider({ children }) {
       addAccount,
       updateAccountCredit,
       payCreditCard,
+      transferFunds,
+      availableCredit,
+      addCardCharge,
+      cardEmis: state.cardEmis,
+      addCardEmi,
+      closeCardEmi,
+      deleteCardEmi,
+      cardEmiInterestDue,
+      runCardEmiInterest,
       renameAccount,
       updateAccountBalance,
       deleteAccount,
@@ -1160,6 +1420,14 @@ export function FinanceProvider({ children }) {
     if (!remoteReadyRef.current) return
     if (!api.autoRecurringDue.length) return
     api.runAutoRecurring()
+  }, [state, uid, hydratedUid, api])
+
+  // Card EMI interest posts itself on each bill date, same gate again.
+  useEffect(() => {
+    if (!uid || hydratedUid !== uid) return
+    if (!remoteReadyRef.current) return
+    if (!api.cardEmiInterestDue.length) return
+    api.runCardEmiInterest()
   }, [state, uid, hydratedUid, api])
 
   // Loan installments post themselves under the same gate as recurring rules.

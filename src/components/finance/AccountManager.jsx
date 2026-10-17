@@ -175,18 +175,19 @@ export default function AccountManager({ accounts, onAdd, onRename, onDelete, on
   const [kind, setKind] = useState('standard')
   const [creditLimit, setCreditLimit] = useState('')
   const [dueDay, setDueDay] = useState('')
+  const [statementDay, setStatementDay] = useState('')
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
 
   const handleAdd = () => {
     setError('')
-    const result = onAdd(name, balance || 0, { kind, creditLimit, dueDay: Number(dueDay) || 0 })
+    const result = onAdd(name, balance || 0, { kind, creditLimit, dueDay: Number(dueDay) || 0, statementDay: Number(statementDay) || undefined })
     if (!result?.ok) { setError(result?.error || 'Unable to add.'); return }
     closeForm()
   }
 
   const closeForm = () => {
-    setShowForm(false); setName(''); setBalance(''); setKind('standard'); setCreditLimit(''); setDueDay(''); setError('')
+    setShowForm(false); setName(''); setBalance(''); setKind('standard'); setCreditLimit(''); setDueDay(''); setStatementDay(''); setError('')
   }
 
   const isCredit = kind === 'credit'
@@ -268,6 +269,18 @@ export default function AccountManager({ accounts, onAdd, onRename, onDelete, on
                   />
                 </div>
                 <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-2)' }}>Statement day (1–31)</label>
+                  <input
+                    value={statementDay}
+                    onChange={(e) => setStatementDay(e.target.value)}
+                    type="number"
+                    min="1"
+                    max="31"
+                    placeholder="25"
+                    className="glass-input min-h-[44px]"
+                  />
+                </div>
+                <div>
                   <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-2)' }}>Bill due day (1–31)</label>
                   <input
                     value={dueDay}
@@ -284,7 +297,7 @@ export default function AccountManager({ accounts, onAdd, onRename, onDelete, on
           </div>
           {isCredit && (
             <p className="text-[11px] mb-3" style={{ color: 'var(--text-3)' }}>
-              Spending on the card raises what you owe. Pay the bill from the Accounts page — it moves money from another account, so it isn&apos;t counted as a new expense.
+              Spending on the card raises what you owe. Each month a statement is generated on the statement day; open the card from Accounts to see bills, minimum due, EMIs and to pay — a payment moves money from another account, so it isn&apos;t counted as a new expense.
             </p>
           )}
           {error && <p className="text-xs font-semibold mb-2" style={{ color: 'var(--danger,#ef4444)' }}>{error}</p>}

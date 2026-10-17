@@ -13,7 +13,7 @@ import TasksCard from '../../components/dashboard/TasksCard'
 import QuickNotes from '../../components/dashboard/QuickNotes'
 import RecentActivity from '../../components/dashboard/RecentActivity'
 import { formatCurrency } from '../../utils/formatters'
-import { useFinance } from '../../context/FinanceContext'
+import { useFinance, countsAsCashflow } from '../../context/FinanceContext'
 import { usePrivacy } from '../../context/PrivacyContext'
 import WalletCard from '../../components/dashboard/WalletCard'
 import { useTheme } from '../../context/ThemeContext'
@@ -51,7 +51,7 @@ function buildDailyTrend(ledgerMonthKey, transactions) {
   const daysInMonth = new Date(y, m, 0).getDate()
   const rows = Array.from({ length: daysInMonth }, (_, i) => ({ date: String(i + 1), income: 0, expense: 0 }))
   transactions
-    .filter((t) => t.date && String(t.date).slice(0, 7) === ledgerMonthKey)
+    .filter((t) => t.date && String(t.date).slice(0, 7) === ledgerMonthKey && countsAsCashflow(t))
     .forEach((t) => {
       const day = parseInt(String(t.date).slice(8, 10), 10) - 1
       if (day < 0 || day >= daysInMonth) return
@@ -80,7 +80,7 @@ function buildMonthlyTrend(monthKey, transactions, count = 6) {
   }))
   transactions.forEach((t) => {
     const row = rows.get(String(t.date || '').slice(0, 7))
-    if (!row) return
+    if (!row || !countsAsCashflow(t)) return
     const n = Number(t.amount || 0)
     if (t.type === 'income') row.income += n
     else if (t.type === 'expense') row.expense += n
@@ -155,7 +155,7 @@ export default function DashboardPage() {
     const prevKey = shiftMonthKey(ledgerMonthKey, -1)
     const prev = new Map()
     transactions.forEach((t) => {
-      if (t.type !== 'expense' || String(t.date || '').slice(0, 7) !== prevKey) return
+      if (t.type !== 'expense' || !countsAsCashflow(t) || String(t.date || '').slice(0, 7) !== prevKey) return
       const c = t.category || 'Other'
       prev.set(c, (prev.get(c) || 0) + Number(t.amount || 0))
     })
